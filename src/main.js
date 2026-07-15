@@ -257,15 +257,15 @@ function createDoor({ y, height, name, racks }) {
   pivot.add(panel);
 
   const innerPanel = rounded(4.15, height - .48, .18, .20, materials.cream);
-  innerPanel.position.set(-2.38, 0, -.05);
+  innerPanel.position.set(-2.38, 0, -.22);
   pivot.add(innerPanel);
 
   for (let i = 0; i < racks; i++) {
     const rack = new THREE.Group();
     const rackBack = rounded(3.5, .62, .12, .08, materials.white);
-    rackBack.position.set(-2.38, (i - (racks - 1) / 2) * 1.22, -.26);
+    rackBack.position.set(-2.38, (i - (racks - 1) / 2) * 1.22, -.38);
     const rail = rounded(3.52, .18, .48, .06, materials.white);
-    rail.position.set(-2.38, rackBack.position.y - .25, -.48);
+    rail.position.set(-2.38, rackBack.position.y - .25, -.64);
     rack.add(rackBack, rail);
     pivot.add(rack);
   }
@@ -500,7 +500,7 @@ function loadInventory() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
   catch { return {}; }
 }
-function saveInventory() { localStorage.setItem(STORAGE_KEY, JSON.stringify(appState.inventory)); }
+function saveInventory() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appState.inventory)); } catch {} }
 
 function resetInventory() {
   appState.inventory = {};
@@ -537,8 +537,17 @@ function onPointerUp(event) {
 
 function render() {
   const dt = Math.min(clock.getDelta(), .05);
-  const upperTarget = appState.upperOpen ? -1.92 : 0;
-  const lowerTarget = appState.lowerOpen ? -1.80 : 0;
+  const upperTarget = appState.upperOpen ? 2.25 : 0;
+  const lowerTarget = appState.lowerOpen ? 2.18 : 0;
+  const portrait = els.stage.clientHeight > els.stage.clientWidth * 1.1;
+  const anyDoorOpen = appState.upperOpen || appState.lowerOpen;
+  const closedScale = portrait ? (els.stage.clientWidth < 390 ? .68 : .70) : .95;
+  const openScale = portrait ? .54 : .82;
+  const targetScale = anyDoorOpen ? openScale : closedScale;
+  const targetX = portrait ? (anyDoorOpen ? -1.15 : -.5) : -.35;
+
+  fridge.group.scale.setScalar(damp(fridge.group.scale.x, targetScale, 5.5, dt));
+  fridge.group.position.x = damp(fridge.group.position.x, targetX, 5.5, dt);
   fridge.upperDoor.pivot.rotation.y = damp(fridge.upperDoor.pivot.rotation.y, upperTarget, 7.5, dt);
   fridge.lowerDoor.pivot.rotation.y = damp(fridge.lowerDoor.pivot.rotation.y, lowerTarget, 7.5, dt);
 
@@ -565,15 +574,17 @@ function resize() {
   camera.aspect = width / height;
   const portrait = height > width * 1.1;
   if (portrait) {
-    camera.position.set(8.9, 3.1, 14.4);
-    camera.lookAt(-.1, .15, 0);
-    camera.fov = width < 390 ? 39 : 36;
-    fridge.group.scale.setScalar(width < 390 ? .88 : .96);
+    camera.position.set(-12, 2.4, 14.5);
+    camera.lookAt(-.3, .2, 0);
+    camera.fov = width < 390 ? 38 : 36;
+    fridge.group.position.x = -.5;
+    fridge.group.scale.setScalar(width < 390 ? .68 : .70);
   } else {
-    camera.position.set(10.5, 2.4, 15.8);
+    camera.position.set(-11.5, 2.4, 15);
     camera.lookAt(-.25, .2, 0);
-    camera.fov = 31;
-    fridge.group.scale.setScalar(1.03);
+    camera.fov = 33;
+    fridge.group.position.x = -.35;
+    fridge.group.scale.setScalar(.95);
   }
   camera.updateProjectionMatrix();
 }
