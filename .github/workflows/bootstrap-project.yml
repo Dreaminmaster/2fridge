@@ -48,6 +48,7 @@ jobs:
           Pocket Fridge passed validation and its production bundle was created successfully.
 
           - Source commit: \`${GITHUB_SHA}\`
+          - Workflow run: \`${GITHUB_RUN_ID}\`
           - Built at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
           EOF
           git config user.name "github-actions[bot]"
@@ -78,6 +79,7 @@ jobs:
           cat > PAGES_DIAGNOSTICS.md <<EOF
           # GitHub Pages preparation
 
+          - Workflow run: \`${GITHUB_RUN_ID}\`
           - Configure Pages: ${{ steps.configure.outcome }}
           - Upload artifact: ${{ steps.upload.outcome }}
           - Checked at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
@@ -112,6 +114,7 @@ jobs:
           cat > DEPLOYMENT_STATUS.md <<EOF
           # GitHub Pages deployment
 
+          - Workflow run: \`${GITHUB_RUN_ID}\`
           - Outcome: ${{ steps.deployment.outcome }}
           - URL: https://dreaminmaster.github.io/2fridge/
           - Deployment source: \`${GITHUB_SHA}\`
