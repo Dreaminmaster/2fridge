@@ -67,3 +67,23 @@ jobs:
       - name: Deploy GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Record successful deployment
+        shell: bash
+        run: |
+          cat > DEPLOYMENT_STATUS.md <<EOF
+          # GitHub Pages deployment
+
+          Pocket Fridge was successfully built, validated, and deployed by GitHub Actions.
+
+          - URL: https://dreaminmaster.github.io/2fridge/
+          - Source commit: \`${GITHUB_SHA}\`
+          - Deployed at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add DEPLOYMENT_STATUS.md
+          if ! git diff --cached --quiet; then
+            git commit -m "Record successful GitHub Pages deployment"
+            git push
+          fi
