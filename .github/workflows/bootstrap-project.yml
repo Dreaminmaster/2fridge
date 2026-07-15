@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -17,13 +17,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    outputs:
-      artifact_ready: ${{ steps.upload.outcome }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          ref: main
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -39,58 +35,16 @@ jobs:
       - name: Build production site
         run: npm run build
 
-      - name: Record successful production build
-        shell: bash
-        run: |
-          cat > BUILD_STATUS.md <<EOF
-          # Production build status
-
-          Pocket Fridge passed validation and its production bundle was created successfully.
-
-          - Source commit: \`${GITHUB_SHA}\`
-          - Workflow run: \`${GITHUB_RUN_ID}\`
-          - Built at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
-          EOF
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add BUILD_STATUS.md
-          git commit -m "Record successful Pocket Fridge build" || true
-          git push origin HEAD:main
-
       - name: Configure GitHub Pages
-        id: configure
-        continue-on-error: true
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Upload GitHub Pages artifact
-        id: upload
-        continue-on-error: true
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
 
-      - name: Record Pages preparation diagnostics
-        if: always()
-        shell: bash
-        run: |
-          git pull --rebase origin main
-          cat > PAGES_DIAGNOSTICS.md <<EOF
-          # GitHub Pages preparation
-
-          - Workflow run: \`${GITHUB_RUN_ID}\`
-          - Configure Pages: ${{ steps.configure.outcome }}
-          - Upload artifact: ${{ steps.upload.outcome }}
-          - Checked at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
-          EOF
-          git add PAGES_DIAGNOSTICS.md
-          git commit -m "Record GitHub Pages preparation status" || true
-          git push origin HEAD:main
-
   deploy:
     needs: build
-    if: ${{ needs.build.outputs.artifact_ready == 'success' }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -98,30 +52,4 @@ jobs:
     steps:
       - name: Deploy GitHub Pages
         id: deployment
-        continue-on-error: true
         uses: actions/deploy-pages@v4
-
-      - name: Checkout latest main for deployment record
-        if: always()
-        uses: actions/checkout@v4
-        with:
-          ref: main
-
-      - name: Record deployment outcome
-        if: always()
-        shell: bash
-        run: |
-          cat > DEPLOYMENT_STATUS.md <<EOF
-          # GitHub Pages deployment
-
-          - Workflow run: \`${GITHUB_RUN_ID}\`
-          - Outcome: ${{ steps.deployment.outcome }}
-          - URL: https://dreaminmaster.github.io/2fridge/
-          - Deployment source: \`${GITHUB_SHA}\`
-          - Checked at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
-          EOF
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add DEPLOYMENT_STATUS.md
-          git commit -m "Record GitHub Pages deployment outcome" || true
-          git push origin HEAD:main

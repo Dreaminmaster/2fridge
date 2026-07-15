@@ -6,7 +6,16 @@
 
 **GitHub Pages：<https://dreaminmaster.github.io/2fridge/>**
 
-> 第一次提交后，GitHub Pages 工作流需要短暂构建和部署。如果页面暂时显示 404，请等待 Actions 中的 `Deploy Pocket Fridge to GitHub Pages` 完成。
+### 首次启用 GitHub Pages
+
+仓库代码、测试和生产构建已经完成。这个新仓库还需要由仓库所有者进行一次 GitHub Pages 来源设置：
+
+1. 打开仓库的 **Settings**；
+2. 进入左侧 **Pages**；
+3. 在 **Build and deployment** 下，将 **Source** 选择为 **GitHub Actions**；
+4. 返回 **Actions**，打开 **Build and Deploy Pocket Fridge**，点击 **Run workflow**。
+
+完成这一次设置后，网页会发布到上方地址；今后每次推送到 `main` 都会自动重新部署。
 
 ## 当前已实现
 
@@ -21,8 +30,9 @@
 - 添加食材时自动打开对应柜门
 - 本地库存保存，刷新页面后食材仍然保留
 - 当前库存预览、数量角标、清空确认和操作提示
+- iPhone 安全区和桌面宽屏响应式适配
 - 对 `prefers-reduced-motion` 的无障碍支持
-- GitHub Actions 自动构建并部署到 GitHub Pages
+- GitHub Actions 自动验证、构建并部署 GitHub Pages
 
 ## 食材
 
@@ -46,6 +56,7 @@ npm run dev
 构建和本地预览：
 
 ```bash
+npm test
 npm run build
 npm run preview
 ```
@@ -61,13 +72,14 @@ npm run preview
 
 手机竖屏是主要设计基准。较宽屏幕下，相机距离、冰箱比例、食材面板宽度和底部库存条会自动调整；触控点击区域、底部安全区和 iPhone 刘海安全区也已经纳入布局。
 
-## 部署
+## 自动部署
 
-仓库中的 `.github/workflows/bootstrap-project.yml` 会在每次推送到 `main` 后自动：
+`.github/workflows/bootstrap-project.yml` 会在每次推送到 `main` 后自动：
 
 1. 安装依赖；
-2. 执行生产构建；
-3. 上传 `dist`；
-4. 发布到 GitHub Pages。
+2. 验证项目结构和交互能力；
+3. 执行生产构建；
+4. 上传 `dist`；
+5. 发布到 GitHub Pages。
 
-Vite 的生产路径已经配置为 `/2fridge/`，因此静态资源可以在项目 Pages 地址下正常加载。
+Vite 的生产路径已经配置为 `/2fridge/`，因此静态资源会在项目 Pages 地址下正常加载。
