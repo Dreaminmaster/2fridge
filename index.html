@@ -3,86 +3,116 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#e9c993" />
-    <meta name="description" content="一个手机优先的低多边形 3D 互动冰箱。打开柜门、选择食材，并把它们放进冷藏、冷冻和门内收纳区。" />
+    <meta name="theme-color" content="#efd6a7" />
+    <meta name="description" content="手机端优先的低多边形 3D 互动冰箱。" />
     <title>口袋冰箱 · Pocket Fridge</title>
   </head>
   <body>
-    <div id="app">
-      <header class="topbar">
-        <button class="icon-button" id="helpButton" aria-label="使用说明" title="使用说明">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h11"/></svg>
-        </button>
-        <div class="brand">
-          <h1>口袋冰箱</h1>
-          <p id="statusText">轻触柜门，打开冰箱</p>
-        </div>
-        <button class="icon-button" id="resetButton" aria-label="清空冰箱" title="清空冰箱">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
-        </button>
-      </header>
+    <main id="app" class="app-shell">
+      <section id="stage" class="stage" aria-label="3D 互动冰箱">
+        <canvas id="scene"></canvas>
 
-      <main class="stage" id="stage">
-        <canvas id="scene" aria-label="可互动的三维冰箱"></canvas>
-        <div class="tap-hint" id="tapHint"><span></span>轻触上门或下门</div>
-
-        <button class="food-toggle" id="foodToggle" aria-expanded="false" aria-controls="foodDrawer">
-          <svg viewBox="0 0 48 48" aria-hidden="true">
-            <path d="M12 19h24l-2.4 17H14.4L12 19Z"/>
-            <path d="m17 19 5-8m9 8-5-8M19 25v6m5-6v6m5-6v6"/>
-          </svg>
-          <span class="badge" id="inventoryBadge">0</span>
-        </button>
-
-        <aside class="food-drawer" id="foodDrawer" aria-hidden="true">
-          <div class="drawer-handle"></div>
-          <div class="drawer-header">
-            <div>
-              <h2>选择食材</h2>
-              <p>点击后自动放入合适位置</p>
-            </div>
-            <button class="drawer-close" id="drawerClose" aria-label="收起食材面板">×</button>
+        <header class="top-bar">
+          <div class="brand" aria-label="口袋冰箱">
+            <span class="brand-mark" aria-hidden="true">▦</span>
+            <span>口袋冰箱</span>
           </div>
-          <div class="category-tabs" id="categoryTabs" role="tablist"></div>
-          <div class="food-grid" id="foodGrid"></div>
-        </aside>
+          <div class="top-actions">
+            <button id="helpButton" class="icon-button" type="button" aria-label="使用说明">?</button>
+            <button id="resetButton" class="icon-button" type="button" aria-label="清空冰箱">↺</button>
+          </div>
+        </header>
 
-        <section class="inventory-peek" id="inventoryPeek" aria-live="polite">
-          <div class="peek-title"><span>当前冰箱</span><strong id="inventoryCount">0 件</strong></div>
-          <div class="peek-items" id="peekItems"><p class="empty-copy">还没有放入食材</p></div>
+        <div class="camera-controls" aria-label="视角控制">
+          <button id="zoomInButton" class="control-button" type="button" aria-label="放大冰箱">+</button>
+          <button id="zoomOutButton" class="control-button" type="button" aria-label="缩小冰箱">−</button>
+          <button id="resetViewButton" class="control-button control-button--reset" type="button" aria-label="恢复默认视角">⌂</button>
+        </div>
+
+        <p id="gestureHint" class="gesture-hint">拖动旋转 · 双指缩放 · 轻点柜门或食物</p>
+
+        <button id="foodToggle" class="food-toggle" type="button" aria-controls="foodDrawer" aria-expanded="false">
+          <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 11h18l-2 14H9L7 11Zm4-5 5 5 5-5"/></svg>
+          <span>添加</span>
+        </button>
+
+        <section id="inventoryDock" class="inventory-dock" aria-label="冰箱容量">
+          <button id="inventoryToggle" class="inventory-summary" type="button" aria-controls="inventoryDrawer" aria-expanded="false">
+            <span class="inventory-summary__title">冰箱内容</span>
+            <span id="inventoryCount" class="inventory-summary__count">0 / 29</span>
+            <span class="inventory-summary__chevron">⌃</span>
+          </button>
+          <div id="zoneMeters" class="zone-meters"></div>
         </section>
 
-        <div class="toast" id="toast" role="status" aria-live="polite"></div>
-      </main>
+        <aside id="foodDrawer" class="drawer drawer--food" aria-hidden="true">
+          <div class="drawer-handle" aria-hidden="true"></div>
+          <div class="drawer-header">
+            <div>
+              <h2>添加食材</h2>
+              <p>系统会自动分配到合适且空闲的位置</p>
+            </div>
+            <button id="foodDrawerClose" class="icon-button icon-button--plain" type="button" aria-label="关闭食材面板">×</button>
+          </div>
+          <label class="search-field">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>
+            <input id="foodSearch" type="search" placeholder="搜索牛肉、鸡蛋、可乐……" autocomplete="off" />
+          </label>
+          <div id="categoryTabs" class="category-tabs" role="tablist" aria-label="食材分类"></div>
+          <div id="foodGrid" class="food-grid"></div>
+        </aside>
 
-      <div class="help-sheet" id="helpSheet" aria-hidden="true">
-        <button class="sheet-backdrop" data-close-help aria-label="关闭说明"></button>
-        <div class="sheet-card">
-          <div class="sheet-grabber"></div>
-          <h2>怎么玩</h2>
-          <ol>
-            <li><b>轻触柜门</b><span>分别打开或关闭冷藏区与冷冻区。</span></li>
-            <li><b>点击右侧篮子</b><span>展开食材面板，选择想放入的食材。</span></li>
-            <li><b>自动分类</b><span>饮料进入门架，肉类进入冷冻区，其余食材进入冷藏区。</span></li>
-            <li><b>自动保存</b><span>刷新网页后，冰箱里的食材仍然保留在当前设备。</span></li>
-          </ol>
-          <button class="primary-button" data-close-help>开始使用</button>
-        </div>
-      </div>
+        <aside id="inventoryDrawer" class="drawer drawer--inventory" aria-hidden="true">
+          <div class="drawer-handle" aria-hidden="true"></div>
+          <div class="drawer-header">
+            <div>
+              <h2>冰箱内容</h2>
+              <p>可以逐件移除，空槽会自动重新利用</p>
+            </div>
+            <button id="inventoryDrawerClose" class="icon-button icon-button--plain" type="button" aria-label="关闭库存面板">×</button>
+          </div>
+          <div id="inventorySections" class="inventory-sections"></div>
+        </aside>
 
-      <div class="confirm-sheet" id="confirmSheet" aria-hidden="true">
-        <button class="sheet-backdrop" data-close-confirm aria-label="取消清空"></button>
-        <div class="sheet-card compact">
-          <div class="sheet-grabber"></div>
-          <h2>清空冰箱？</h2>
-          <p>所有已经放入的食材都会从当前设备中删除。</p>
-          <div class="confirm-actions">
-            <button class="secondary-button" data-close-confirm>取消</button>
-            <button class="danger-button" id="confirmReset">清空</button>
+        <section id="itemSheet" class="item-sheet" aria-hidden="true">
+          <div id="itemSheetIcon" class="item-sheet__icon"></div>
+          <div class="item-sheet__content">
+            <strong id="itemSheetName"></strong>
+            <span id="itemSheetMeta"></span>
+          </div>
+          <button id="removeSelectedItem" class="danger-button" type="button">移除</button>
+          <button id="itemSheetClose" class="icon-button icon-button--plain" type="button" aria-label="关闭">×</button>
+        </section>
+
+        <div id="toast" class="toast" role="status" aria-live="polite"></div>
+      </section>
+
+      <div id="scrim" class="scrim" hidden></div>
+
+      <section id="helpSheet" class="modal-sheet" aria-hidden="true">
+        <div class="modal-sheet__card">
+          <button class="icon-button icon-button--plain modal-sheet__close" data-close-modal type="button" aria-label="关闭">×</button>
+          <h2>如何使用</h2>
+          <div class="help-grid">
+            <article><b>拖动</b><span>旋转查看冰箱侧面和柜门内侧</span></article>
+            <article><b>双指或滚轮</b><span>平滑放大和缩小冰箱</span></article>
+            <article><b>轻点柜门</b><span>分别打开冷藏区和冷冻区</span></article>
+            <article><b>轻点食物</b><span>查看位置并单独移除</span></article>
           </div>
         </div>
-      </div>
-    </div>
+      </section>
+
+      <section id="confirmSheet" class="modal-sheet" aria-hidden="true">
+        <div class="modal-sheet__card modal-sheet__card--compact">
+          <h2>清空整个冰箱？</h2>
+          <p>所有已经添加的食材都会从当前设备移除。</p>
+          <div class="modal-actions">
+            <button class="secondary-button" data-close-modal type="button">取消</button>
+            <button id="confirmReset" class="danger-button danger-button--wide" type="button">确认清空</button>
+          </div>
+        </div>
+      </section>
+    </main>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

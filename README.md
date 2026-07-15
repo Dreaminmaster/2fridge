@@ -1,85 +1,96 @@
 # 口袋冰箱 · Pocket Fridge
 
-一个以手机端为核心、使用 Three.js 实现的低多边形 3D 互动冰箱。用户可以分别打开冷藏门和冷冻门，从右侧食材面板选择食材，并把它们自动放入冷藏区、冷冻区或柜门收纳架。
+一个以手机端为核心、使用 Three.js 实现的低多边形 3D 互动冰箱。
 
 ## 在线体验
 
-**GitHub Pages：<https://dreaminmaster.github.io/2fridge/>**
+**<https://dreaminmaster.github.io/2fridge/>**
 
-### 首次启用 GitHub Pages
+## 本次版本重点
 
-仓库代码、测试和生产构建已经完成。这个新仓库还需要由仓库所有者进行一次 GitHub Pages 来源设置：
+- 拖动旋转冰箱，双指或滚轮缩放，并提供放大、缩小和恢复视角按钮
+- 上下柜门独立开合，打开后可以观察内部与柜门置物架
+- 每一件食材都有独立 `instanceId`、存放区域和固定槽位
+- 冷藏区 12 个位置、冷冻区 8 个位置、门内 9 个位置，总容量 29 件
+- 区域放满后禁止继续添加，并在食材面板和容量条中明确显示
+- 轻点 3D 食材可单独移除，也可在库存面板按种类逐件减少
+- 删除食材后空槽会被重新利用，不会因持续添加造成模型重叠
+- 手机端底部抽屉与桌面端右侧抽屉使用不同布局
+- 删除了原来顶部的冰箱状态提示，保留更轻量的操作反馈
 
-1. 打开仓库的 **Settings**；
-2. 进入左侧 **Pages**；
-3. 在 **Build and deployment** 下，将 **Source** 选择为 **GitHub Actions**；
-4. 返回 **Actions**，打开 **Build and Deploy Pocket Fridge**，点击 **Run workflow**。
+## 面向未来菜谱系统的数据结构
 
-完成这一次设置后，网页会发布到上方地址；今后每次推送到 `main` 都会自动重新部署。
+库存不再只是一个数量对象，而是独立条目数组：
 
-## 当前已实现
+```js
+{
+  instanceId: "...",
+  foodId: "eggs",
+  ingredientKey: "egg",
+  zone: "fridge",
+  slot: 0,
+  quantity: 1,
+  unit: "盒",
+  addedAt: "..."
+}
+```
 
-- 手机竖屏优先的全屏交互界面，同时兼容桌面浏览器
-- Three.js 程序化低多边形冰箱、房间、地板和装饰植物
-- 独立开合的冷藏门与冷冻门，支持鼠标和触摸点击
-- 冷藏层架、冷冻层架以及冰箱门内置物架
-- 15 种低多边形 3D 食材
-- 食材分类面板：全部、冷冻、冷藏、门内
-- 点击食材后自动分类、自动摆放并播放落位动画
-- 同一区域连续添加时自动错位排列，避免完全重叠
-- 添加食材时自动打开对应柜门
-- 本地库存保存，刷新页面后食材仍然保留
-- 当前库存预览、数量角标、清空确认和操作提示
-- iPhone 安全区和桌面宽屏响应式适配
-- 对 `prefers-reduced-motion` 的无障碍支持
-- GitHub Actions 自动验证、构建并部署 GitHub Pages
+`src/domain/recipeContext.js` 会把冰箱条目转换成稳定的菜谱输入：
 
-## 食材
+```js
+window.pocketFridge.getRecipeContext()
+```
 
-牛肉条、羊肉条、鸡肉块、鸡腿、鸡翅、金枪鱼、红烧肉、洋葱、蒜苗、韭菜、可乐、黄油、牛奶、鸡蛋、酱料瓶。
+返回内容包括标准食材键、数量、单位、存放区域和菜谱标签。后续无论连接本地规则菜谱、数据库还是 AI 菜谱生成，都不需要重写 3D 冰箱与库存层。
 
-## 技术栈
+## 代码结构
 
-- Vite
-- Three.js
-- 原生 HTML、CSS 和 JavaScript
-- GitHub Actions
-- GitHub Pages
+```text
+src/
+├─ data/
+│  └─ foodCatalog.js       食材、分类、容量及菜谱元数据
+├─ domain/
+│  ├─ inventoryStore.js    库存状态、容量、槽位、持久化与移除逻辑
+│  └─ recipeContext.js     菜谱系统标准数据出口
+├─ scene/
+│  ├─ createFridge.js      冰箱结构与柜门
+│  ├─ createFoodModel.js   Low-poly 食物模型
+│  ├─ createRoom.js        场景背景
+│  ├─ fridgeLayout.js      固定存储槽位
+│  ├─ geometry.js          通用几何体
+│  ├─ materials.js         材质与色板
+│  └─ sceneController.js   Three.js、旋转缩放、射线点击和动画
+├─ ui/
+│  ├─ foodIcon.js          食材界面图标
+│  └─ uiController.js      抽屉、容量、添加、移除和提示
+├─ main.js                 依赖组装和公开数据接口
+└─ style.css               手机与桌面响应式样式
+```
 
-## 本地运行
+## 运行与测试
 
 ```bash
 npm install
 npm run dev
-```
-
-构建和本地预览：
-
-```bash
 npm test
 npm run build
 npm run preview
 ```
 
-## 交互说明
+测试覆盖：
 
-1. 轻触冰箱上门或下门，分别打开冷藏区和冷冻区。
-2. 点击右侧绿色篮子按钮，展开食材选择面板。
-3. 点击任意食材，系统会自动生成相应的 3D 模型并放入合适区域。
-4. 点击右上角清空按钮，可以清除当前设备保存的全部食材。
+- 区域容量上限
+- 超量添加拒绝
+- 单件移除
+- 空槽重新使用
+- 同类食材数量聚合
+- 未来菜谱上下文生成
 
-## 响应式设计
+## 技术栈
 
-手机竖屏是主要设计基准。较宽屏幕下，相机距离、冰箱比例、食材面板宽度和底部库存条会自动调整；触控点击区域、底部安全区和 iPhone 刘海安全区也已经纳入布局。
-
-## 自动部署
-
-`.github/workflows/bootstrap-project.yml` 会在每次推送到 `main` 后自动：
-
-1. 安装依赖；
-2. 验证项目结构和交互能力；
-3. 执行生产构建；
-4. 上传 `dist`；
-5. 发布到 GitHub Pages。
-
-Vite 的生产路径已经配置为 `/2fridge/`，因此静态资源会在项目 Pages 地址下正常加载。
+- Three.js
+- OrbitControls
+- Vite
+- 原生 JavaScript、HTML、CSS
+- Node.js 内置测试运行器
+- GitHub Actions / GitHub Pages
