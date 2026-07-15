@@ -2,6 +2,8 @@
 
 一个以手机端为核心、使用 Three.js 实现的低多边形 3D 互动冰箱。
 
+**当前版本：2.0 交互与数据结构重构版**
+
 ## 在线体验
 
 **<https://dreaminmaster.github.io/2fridge/>**
