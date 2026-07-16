@@ -5,7 +5,17 @@ import { createRoom } from './createRoom.js';
 import { createFridge } from './createFridge.js';
 import { createFoodModel } from './createFoodModel.js';
 
-export function createSceneController({ canvas, stage, onDoorChange, onFoodSelect, onUserNavigate }) {
+const ROOM_FLOOR_Y = -3.32;
+const MOVE_LIMITS = { x: 4.5, z: 2.8 };
+
+export function createSceneController({
+  canvas,
+  stage,
+  onDoorChange,
+  onFoodSelect,
+  onUserNavigate,
+  onMoveModeChange,
+}) {
   const profile = getRenderProfile();
   const renderer = new THREE.WebGLRenderer({
     canvas,
@@ -24,14 +34,15 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#efcf98');
-  scene.fog = new THREE.Fog('#efcf98', 13, 30);
+  scene.fog = null;
+
   const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
   const controls = new OrbitControls(camera, canvas);
   controls.enableDamping = !profile.mobile;
   controls.dampingFactor = 0.075;
   controls.enablePan = false;
   controls.minDistance = 10.5;
-  controls.maxDistance = 26;
+  controls.maxDistance = 32;
   controls.minPolarAngle = Math.PI * 0.24;
   controls.maxPolarAngle = Math.PI * 0.68;
   controls.rotateSpeed = profile.mobile ? 0.78 : 0.62;
@@ -42,7 +53,10 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
   setupLights(scene, profile);
   createRoom(scene);
   const fridge = createFridge(createMaterials());
+  fridge.group.position.set(0, 0, 0);
   scene.add(fridge.group);
+  fridge.group.updateMatrixWorld(true);
+  const fridgeLocalBottom = new THREE.Box3().setFromObject(fridge.group).min.y;
 
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
@@ -51,6 +65,10 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
   const doorState = { upper: false, lower: false };
   const clock = new THREE.Clock();
   let pointerStart = null;
+  let movePointer = null;
+  let moveMode = false;
+  let userOffsetX = 0;
+  let userOffsetZ = 0;
   let baseScale = 0.82;
   let baseX = -0.45;
   let initialView = null;
@@ -73,15 +91,63 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
     settleFrames = profile.mobile ? 0 : 20;
     invalidate(settleFrames || 1);
   });
-  canvas.addEventListener('pointerdown', (event) => {
-    pointerStart = { x: event.clientX, y: event.clientY };
+
+  canvas.addEventListener('pointerdown', handlePointerDown);
+  canvas.addEventListener('pointermove', handlePointerMove);
+  canvas.addEventListener('pointerup', handlePointerUp);
+  canvas.addEventListener('pointercancel', cancelPointer);
+  canvas.addEventListener('contextmenu', (event) => {
+    if (moveMode) event.preventDefault();
   });
-  canvas.addEventListener('pointerup', handleTap);
-  canvas.addEventListener('pointercancel', () => { pointerStart = null; });
   globalThis.addEventListener('resize', resize, { passive: true });
 
+  function handlePointerDown(event) {
+    pointerStart = { x: event.clientX, y: event.clientY };
+    if (!profile.mobile && moveMode && event.button === 0) {
+      movePointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      canvas.setPointerCapture?.(event.pointerId);
+      onUserNavigate?.();
+      event.preventDefault();
+    }
+  }
+
+  function handlePointerMove(event) {
+    if (!movePointer || event.pointerId !== movePointer.id) return;
+    const dx = event.clientX - movePointer.x;
+    const dy = event.clientY - movePointer.y;
+    movePointer.x = event.clientX;
+    movePointer.y = event.clientY;
+    const distance = camera.position.distanceTo(controls.target);
+    const worldPerPixel = THREE.MathUtils.clamp(distance * 0.00135, 0.014, 0.035);
+    userOffsetX = THREE.MathUtils.clamp(userOffsetX + dx * worldPerPixel, -MOVE_LIMITS.x, MOVE_LIMITS.x);
+    userOffsetZ = THREE.MathUtils.clamp(userOffsetZ + dy * worldPerPixel * 0.72, -MOVE_LIMITS.z, MOVE_LIMITS.z);
+    shadowDirty = true;
+    invalidate(2);
+    event.preventDefault();
+  }
+
+  function handlePointerUp(event) {
+    if (movePointer && event.pointerId === movePointer.id) {
+      canvas.releasePointerCapture?.(event.pointerId);
+      movePointer = null;
+      pointerStart = null;
+      shadowDirty = true;
+      invalidate(3);
+      return;
+    }
+    handleTap(event);
+  }
+
+  function cancelPointer(event) {
+    if (movePointer && event.pointerId === movePointer.id) movePointer = null;
+    pointerStart = null;
+  }
+
   function handleTap(event) {
-    if (!pointerStart) return;
+    if (!pointerStart || moveMode) {
+      pointerStart = null;
+      return;
+    }
     const movement = Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y);
     pointerStart = null;
     if (movement > 8) return;
@@ -177,13 +243,7 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
       clearAttention();
       const marker = new THREE.Mesh(
         new THREE.OctahedronGeometry(0.22, 0),
-        new THREE.MeshBasicMaterial({
-          color: '#fff1a6',
-          transparent: true,
-          opacity: 0.98,
-          depthTest: false,
-          depthWrite: false,
-        }),
+        new THREE.MeshBasicMaterial({ color: '#fff1a6', transparent: true, opacity: 0.98, depthTest: false, depthWrite: false }),
       );
       marker.position.set(0, 1.05, 0);
       marker.renderOrder = 999;
@@ -205,19 +265,46 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
 
   function zoomBy(amount) {
     const direction = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
-    const nextDistance = THREE.MathUtils.clamp(camera.position.distanceTo(controls.target) + amount, controls.minDistance, controls.maxDistance);
+    const nextDistance = THREE.MathUtils.clamp(
+      camera.position.distanceTo(controls.target) + amount,
+      controls.minDistance,
+      controls.maxDistance,
+    );
     camera.position.copy(controls.target).add(direction.multiplyScalar(nextDistance));
     controls.update();
     onUserNavigate?.();
     invalidate(profile.mobile ? 1 : 15);
   }
 
+  function setMoveMode(enabled) {
+    const next = !profile.mobile && Boolean(enabled);
+    moveMode = next;
+    controls.enableRotate = !moveMode;
+    canvas.classList.toggle('fridge-move-mode', moveMode);
+    if (!moveMode) movePointer = null;
+    onMoveModeChange?.(moveMode);
+    invalidate(1);
+    return moveMode;
+  }
+
+  function toggleMoveMode() {
+    return setMoveMode(!moveMode);
+  }
+
   function resetView() {
     if (!initialView) return;
+    setMoveMode(false);
+    userOffsetX = 0;
+    userOffsetZ = 0;
     camera.position.copy(initialView.position);
     controls.target.copy(initialView.target);
     controls.update();
-    invalidate(profile.mobile ? 1 : 15);
+    shadowDirty = true;
+    invalidate(profile.mobile ? 1 : 18);
+  }
+
+  function groundedY(scale) {
+    return ROOM_FLOOR_Y - fridgeLocalBottom * scale + 0.006;
   }
 
   function resize() {
@@ -229,8 +316,6 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
     const portrait = height > width * 1.08;
     const signature = `${portrait ? 'portrait' : 'landscape'}-${width < 390 ? 'small' : width < 760 ? 'medium' : 'wide'}`;
 
-    // Safari changes viewport height as its address bar moves. Do not reset the
-    // camera for those height-only resizes; preserve the user's current orbit.
     if (!initialView || signature !== layoutSignature) {
       layoutSignature = signature;
       if (portrait) {
@@ -248,7 +333,7 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
       }
       initialView = { position: camera.position.clone(), target: controls.target.clone() };
       fridge.group.scale.setScalar(baseScale);
-      fridge.group.position.x = baseX;
+      fridge.group.position.set(baseX + userOffsetX, groundedY(baseScale), userOffsetZ);
       controls.update();
     }
 
@@ -269,18 +354,24 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
     const upperTarget = doorState.upper ? 1.92 : 0;
     const lowerTarget = doorState.lower ? 1.82 : 0;
     const anyOpen = doorState.upper || doorState.lower;
-    const desiredX = baseX + (anyOpen ? -0.72 : 0);
     const desiredScale = baseScale * (anyOpen ? 0.94 : 1);
+    const desiredX = baseX + userOffsetX + (anyOpen ? -0.72 : 0);
+    const desiredZ = userOffsetZ;
+    const desiredY = groundedY(desiredScale);
 
     fridge.doors.upper.pivot.rotation.y = damp(fridge.doors.upper.pivot.rotation.y, upperTarget, 8.5, delta);
     fridge.doors.lower.pivot.rotation.y = damp(fridge.doors.lower.pivot.rotation.y, lowerTarget, 8.5, delta);
-    fridge.group.position.x = damp(fridge.group.position.x, desiredX, 6.5, delta);
+    fridge.group.position.x = damp(fridge.group.position.x, desiredX, 7.5, delta);
+    fridge.group.position.y = damp(fridge.group.position.y, desiredY, 7.5, delta);
+    fridge.group.position.z = damp(fridge.group.position.z, desiredZ, 8.5, delta);
     const nextScale = damp(fridge.group.scale.x, desiredScale, 6.5, delta);
     fridge.group.scale.setScalar(nextScale);
 
     const cabinetMoving = !near(fridge.doors.upper.pivot.rotation.y, upperTarget)
       || !near(fridge.doors.lower.pivot.rotation.y, lowerTarget)
       || !near(fridge.group.position.x, desiredX)
+      || !near(fridge.group.position.y, desiredY)
+      || !near(fridge.group.position.z, desiredZ)
       || !near(fridge.group.scale.x, desiredScale);
     if (!cabinetMoving && cabinetWasMoving) shadowDirty = true;
     cabinetWasMoving = cabinetMoving;
@@ -317,6 +408,7 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
 
     if (settleFrames > 0) settleFrames -= 1;
     const needsAnotherFrame = controlsActive
+      || Boolean(movePointer)
       || cabinetMoving
       || animations.length > 0
       || Boolean(attention)
@@ -336,6 +428,9 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
     zoomIn: () => zoomBy(-1.7),
     zoomOut: () => zoomBy(1.7),
     resetView,
+    setMoveMode,
+    toggleMoveMode,
+    getMoveMode: () => moveMode,
     getDoorState: () => ({ ...doorState }),
   };
 }
@@ -345,8 +440,6 @@ function getRenderProfile() {
   const narrowViewport = (globalThis.innerWidth ?? 1024) < 760;
   return {
     mobile: coarsePointer || narrowViewport,
-    // Preserve crisp Retina rendering. Performance now comes from on-demand
-    // frames and cached shadows rather than reducing visual resolution.
     pixelRatioCap: coarsePointer || narrowViewport ? 1.8 : 2,
     shadowMapSize: 1536,
   };
