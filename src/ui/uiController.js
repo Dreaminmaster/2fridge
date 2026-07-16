@@ -5,6 +5,7 @@ import { foodIconSvg } from './foodIcon.js';
 export function createUIController({ store, scene }) {
   const elements = collectElements();
   const catalogById = new Map(FOOD_CATALOG.map((food) => [food.id, food]));
+  const compactViewport = typeof globalThis.matchMedia === 'function' && globalThis.matchMedia('(max-width: 759px)').matches;
   let activeCategory = 'all';
   let searchTerm = '';
   let selectedInstanceId = null;
@@ -68,13 +69,18 @@ export function createUIController({ store, scene }) {
     visible.forEach((food) => {
       const used = snapshot.usage[food.target];
       const zone = ZONE_META[food.target];
-      const full = used >= zone.capacity;
+      const nextSlotIndex = findFirstFreeSlot(snapshot.items, food.target);
+      const nextSlot = nextSlotIndex >= 0 ? SLOT_LAYOUT[food.target]?.[nextSlotIndex] : null;
+      const full = nextSlotIndex < 0 || used >= zone.capacity;
       const count = snapshot.items.filter((item) => item.foodId === food.id).length;
+      const placementCopy = full
+        ? `${zone.shortLabel}已满`
+        : `放入${zone.shortLabel}${nextSlot?.depthLabel && nextSlot.depthLabel !== '门架' ? ` · ${nextSlot.depthLabel}` : ''}`;
       const button = document.createElement('button');
       button.type = 'button';
       button.className = `food-card${full ? ' food-card--disabled' : ''}`;
       button.disabled = full;
-      button.innerHTML = `${foodIconSvg(food)}<span class="food-card__copy"><strong>${food.name}</strong><small>${full ? `${zone.shortLabel}已满` : `放入${zone.shortLabel}`}</small></span>${count ? `<span class="food-card__count">${count}</span>` : ''}`;
+      button.innerHTML = `${foodIconSvg(food)}<span class="food-card__copy"><strong>${food.name}</strong><small>${placementCopy}</small></span>${count ? `<span class="food-card__count">${count}</span>` : ''}`;
       button.addEventListener('click', () => addFood(food));
       elements.foodGrid.appendChild(button);
     });
@@ -92,9 +98,12 @@ export function createUIController({ store, scene }) {
       if (!grouped.length) section.insertAdjacentHTML('beforeend', '<p class="empty-state empty-state--small">这里还是空的</p>');
       grouped.forEach(({ foodId, items }) => {
         const food = catalogById.get(foodId);
+        const frontCount = items.filter((item) => SLOT_LAYOUT[item.zone]?.[item.slot]?.depth === 'front').length;
+        const backCount = items.filter((item) => SLOT_LAYOUT[item.zone]?.[item.slot]?.depth === 'back').length;
+        const depthSummary = zone.id === 'door' ? '' : ` · 前${frontCount} 后${backCount}`;
         const row = document.createElement('div');
         row.className = 'inventory-row';
-        row.innerHTML = `<span class="inventory-row__icon">${foodIconSvg(food)}</span><span class="inventory-row__copy"><strong>${food.name}</strong><small>${items.length} ${food.unit}</small></span><button class="remove-one" type="button" aria-label="移除一个${food.name}">−</button>`;
+        row.innerHTML = `<span class="inventory-row__icon">${foodIconSvg(food)}</span><span class="inventory-row__copy"><strong>${food.name}</strong><small>${items.length} ${food.unit}${depthSummary}</small></span><button class="remove-one" type="button" aria-label="移除一个${food.name}">−</button>`;
         row.querySelector('.remove-one').addEventListener('click', () => {
           const result = store.removeOne(foodId);
           if (result.ok) { scene.removeItem(result.item.instanceId); showToast(`已移除一个${food.name}`); }
@@ -108,10 +117,12 @@ export function createUIController({ store, scene }) {
   function addFood(food) {
     const result = store.add(food);
     if (!result.ok) { showToast(`${ZONE_META[result.zone].label}已经放满了`); return; }
-    scene.openForZone(food.target);
     const slot = SLOT_LAYOUT[result.item.zone][result.item.slot];
+    scene.revealItem(result.item.instanceId, food.target);
+    if (compactViewport) setTimeout(() => setPanel(null), 90);
     const depthCopy = slot?.depthLabel && slot.depthLabel !== '门架' ? ` · ${slot.depthLabel}` : '';
-    showToast(`${food.name}已放入${ZONE_META[food.target].label}${depthCopy}`);
+    const shelfCopy = slot?.shelf != null ? `第${slot.shelf + 1}层` : '';
+    showToast(`${food.name}已放入${ZONE_META[food.target].label}${shelfCopy ? ` · ${shelfCopy}` : ''}${depthCopy}`);
   }
 
   function selectItem(instanceId) {
@@ -189,4 +200,11 @@ function groupByFood(items) {
   const groups = new Map();
   items.forEach((item) => groups.set(item.foodId, [...(groups.get(item.foodId) ?? []), item]));
   return [...groups.entries()].map(([foodId, groupedItems]) => ({ foodId, items: groupedItems }));
+}
+
+function findFirstFreeSlot(items, zone) {
+  const occupied = new Set(items.filter((item) => item.zone === zone).map((item) => item.slot));
+  const slots = SLOT_LAYOUT[zone] ?? [];
+  for (let index = 0; index < slots.length; index += 1) if (!occupied.has(index)) return index;
+  return -1;
 }
