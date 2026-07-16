@@ -11,6 +11,7 @@ export function createUIController({ store, scene }) {
   let selectedInstanceId = null;
   let activePanel = null;
   let toastTimer;
+  let repairing = false;
 
   FOOD_CATEGORIES.forEach((category) => {
     const button = document.createElement('button');
@@ -42,7 +43,14 @@ export function createUIController({ store, scene }) {
   render(store.getSnapshot());
 
   function render(snapshot) {
-    scene.syncInventory(snapshot.items, catalogById);
+    const failedIds = scene.syncInventory(snapshot.items, catalogById);
+    if (failedIds.length && !repairing) {
+      repairing = true;
+      store.removeMany(failedIds);
+      repairing = false;
+      showToast(`已自动清理 ${failedIds.length} 个无法显示的库存项`);
+      return;
+    }
     renderCapacity(snapshot);
     renderFoodGrid(snapshot);
     renderInventory(snapshot);
@@ -98,6 +106,7 @@ export function createUIController({ store, scene }) {
       if (!grouped.length) section.insertAdjacentHTML('beforeend', '<p class="empty-state empty-state--small">这里还是空的</p>');
       grouped.forEach(({ foodId, items }) => {
         const food = catalogById.get(foodId);
+        if (!food) return;
         const frontCount = items.filter((item) => SLOT_LAYOUT[item.zone]?.[item.slot]?.depth === 'front').length;
         const backCount = items.filter((item) => SLOT_LAYOUT[item.zone]?.[item.slot]?.depth === 'back').length;
         const depthSummary = zone.id === 'door' ? '' : ` · 前${frontCount} 后${backCount}`;
@@ -115,11 +124,31 @@ export function createUIController({ store, scene }) {
   }
 
   function addFood(food) {
-    const result = store.add(food);
-    if (!result.ok) { showToast(`${ZONE_META[result.zone].label}已经放满了`); return; }
-    const slot = SLOT_LAYOUT[result.item.zone][result.item.slot];
-    scene.revealItem(result.item.instanceId, food.target);
-    if (compactViewport) setTimeout(() => setPanel(null), 90);
+    const prepared = store.prepareAdd(food);
+    if (!prepared.ok) {
+      const zoneLabel = ZONE_META[prepared.zone]?.label ?? '该区域';
+      showToast(prepared.reason === 'zone-full' ? `${zoneLabel}已经放满了` : '这个食材暂时无法添加');
+      return;
+    }
+
+    // Stage the model before mutating inventory. A failed model can no longer
+    // create invisible items that silently consume every storage slot.
+    const staged = scene.stageItem(food, prepared.item, { animate: true });
+    if (!staged.ok) {
+      showToast(`${food.name}模型加载失败，未占用冰箱容量`);
+      return;
+    }
+
+    const committed = store.commitPrepared(prepared.item);
+    if (!committed.ok) {
+      scene.removeItem(prepared.item.instanceId);
+      showToast('存放位置刚刚发生变化，请再试一次');
+      return;
+    }
+
+    const slot = SLOT_LAYOUT[prepared.item.zone][prepared.item.slot];
+    scene.revealItem(prepared.item.instanceId, food.target);
+    if (compactViewport) setTimeout(() => setPanel(null), 70);
     const depthCopy = slot?.depthLabel && slot.depthLabel !== '门架' ? ` · ${slot.depthLabel}` : '';
     const shelfCopy = slot?.shelf != null ? `第${slot.shelf + 1}层` : '';
     showToast(`${food.name}已放入${ZONE_META[food.target].label}${shelfCopy ? ` · ${shelfCopy}` : ''}${depthCopy}`);
