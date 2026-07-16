@@ -1,54 +1,82 @@
 export const SLOT_LAYOUT = {
   fridge: buildLayeredShelves({
-    rows: [3.34, 2.16, 0.98],
-    cols: [-1.42, -0.47, 0.48, 1.43],
+    supports: [
+      { supportY: 3.02, maxHeight: 1.12 },
+      { supportY: 1.82, maxHeight: 0.88 },
+      { supportY: 0.64, maxHeight: 0.88 },
+    ],
+    cols: [-1.44, -0.48, 0.48, 1.44],
+    maxWidth: 0.76,
+    maxDepth: 0.72,
     layers: [
-      // Fill the visible front row first. The back row remains raised and offset,
-      // so it is still readable once a shelf contains more than four items.
-      { id: 'front', label: '前排', z: 0.76, xOffset: -0.05, yOffset: 0, scale: 0.70 },
-      { id: 'back', label: '后排', z: -0.50, xOffset: 0.13, yOffset: 0.16, scale: 0.67 },
+      { id: 'front', label: '前排', z: 0.70, xOffset: -0.04, scale: 0.72 },
+      { id: 'back', label: '后排', z: -0.70, xOffset: 0.12, scale: 0.69 },
     ],
   }),
   freezer: buildLayeredShelves({
-    rows: [-1.72, -2.66],
-    cols: [-1.42, -0.47, 0.48, 1.43],
+    supports: [
+      // Upper freezer shelf.
+      { supportY: -2.26, maxHeight: 0.86 },
+      // Lower freezer floor liner. Its vertical clearance is intentionally
+      // smaller so tall models are automatically scaled down instead of
+      // cutting through the shelf above.
+      { supportY: -3.02, maxHeight: 0.58 },
+    ],
+    cols: [-1.44, -0.48, 0.48, 1.44],
+    maxWidth: 0.76,
+    maxDepth: 0.72,
     layers: [
-      { id: 'front', label: '前排', z: 0.76, xOffset: -0.05, yOffset: 0, scale: 0.70 },
-      { id: 'back', label: '后排', z: -0.50, xOffset: 0.13, yOffset: 0.16, scale: 0.67 },
+      { id: 'front', label: '前排', z: 0.70, xOffset: -0.04, scale: 0.70 },
+      { id: 'back', label: '后排', z: -0.70, xOffset: 0.12, scale: 0.67 },
     ],
   }),
   door: buildDoorGrid({
-    rows: [1.22, 0, -1.22],
-    cols: [-3.34, -2.70, -2.06, -1.42],
-    z: -0.80,
-    scale: 0.64,
+    supports: [1.07, -0.15, -1.37],
+    cols: [-3.35, -2.70, -2.05, -1.40],
+    z: -0.82,
+    scale: 0.66,
+    maxWidth: 0.50,
+    maxHeight: 0.72,
+    maxDepth: 0.48,
   }),
 };
 
-function buildLayeredShelves({ rows, cols, layers }) {
-  return rows.flatMap((y, shelfIndex) => layers.flatMap((layer) => cols.map((x, columnIndex) => ({
+function buildLayeredShelves({ supports, cols, layers, maxWidth, maxDepth }) {
+  return supports.flatMap((support, shelfIndex) => layers.flatMap((layer) => cols.map((x, columnIndex) => ({
     x: x + layer.xOffset,
-    y: y + layer.yOffset,
+    y: support.supportY,
+    supportY: support.supportY,
     z: layer.z,
     shelf: shelfIndex,
     column: columnIndex,
     depth: layer.id,
     depthLabel: layer.label,
     scale: layer.scale,
-    rotationY: (columnIndex - 1.5) * 0.045 + (layer.id === 'back' ? -0.04 : 0.04),
+    maxWidth,
+    maxHeight: support.maxHeight,
+    maxDepth,
+    clearance: 0.012,
+    fitPadding: 0.92,
+    rotationY: (columnIndex - 1.5) * 0.035 + (layer.id === 'back' ? -0.025 : 0.025),
   }))));
 }
 
-function buildDoorGrid({ rows, cols, z, scale }) {
-  return rows.flatMap((y, shelfIndex) => cols.map((x, columnIndex) => ({
+function buildDoorGrid({ supports, cols, z, scale, maxWidth, maxHeight, maxDepth }) {
+  return supports.flatMap((supportY, shelfIndex) => cols.map((x, columnIndex) => ({
     x,
-    y,
+    y: supportY,
+    supportY,
     z,
     shelf: shelfIndex,
     column: columnIndex,
     depth: 'door',
     depthLabel: '门架',
     scale,
-    rotationY: (columnIndex - 1.5) * 0.035,
+    maxWidth,
+    maxHeight,
+    maxDepth,
+    clearance: 0.01,
+    fitPadding: 0.92,
+    rotationY: (columnIndex - 1.5) * 0.025,
   })));
 }
