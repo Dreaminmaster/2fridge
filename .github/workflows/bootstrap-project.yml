@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths-ignore:
       - DEPLOYMENT_STATUS.md
+      - BUILD_STATUS.md
   workflow_dispatch:
 
 permissions:
@@ -70,4 +71,36 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add DEPLOYMENT_STATUS.md
           git commit -m "Record successful Pocket Fridge deployment" || true
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+  diagnostics:
+    if: always()
+    needs: [build, deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout latest main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Record workflow result
+        shell: bash
+        env:
+          BUILD_RESULT: ${{ needs.build.result }}
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+        run: |
+          cat > BUILD_STATUS.md <<STATUS
+          # Pocket Fridge workflow status
+
+          - Workflow run: \`${GITHUB_RUN_ID}\`
+          - Source commit: \`${GITHUB_SHA}\`
+          - Build: \`${BUILD_RESULT}\`
+          - Deploy: \`${DEPLOY_RESULT}\`
+          - Recorded at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          STATUS
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add BUILD_STATUS.md
+          git commit -m "Record Pocket Fridge workflow status" || true
+          git pull --rebase origin main
           git push origin HEAD:main
