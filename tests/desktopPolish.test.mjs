@@ -22,7 +22,8 @@ test('desktop scene pans the camera view instead of moving the fridge object', (
   assert.ok(!scene.includes('userOffsetX'));
   assert.ok(!main.includes('moveFridgeButton'));
   assert.ok(!html.includes('moveFridgeButton'));
-  assert.ok(html.includes('电脑触控板双指平移'));
+  assert.ok(!html.includes('电脑触控板双指平移'));
+  assert.ok(!desktopCss.includes('双指平移'));
   assert.ok(desktopCss.includes('cursor: grab'));
 });
 

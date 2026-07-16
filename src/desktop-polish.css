@@ -10,30 +10,4 @@
   .camera-controls {
     gap: 10px;
   }
-
-  .camera-controls::before {
-    content: "双指平移 · 捏合缩放";
-    position: absolute;
-    right: calc(100% + 12px);
-    top: 50%;
-    transform: translateY(-50%);
-    padding: 7px 10px;
-    border: 1px solid rgba(83, 67, 54, .08);
-    border-radius: 12px;
-    color: rgba(73, 61, 51, .72);
-    background: rgba(255, 249, 234, .86);
-    box-shadow: 0 8px 22px rgba(86, 55, 35, .10);
-    font-size: 11px;
-    font-weight: 750;
-    letter-spacing: .02em;
-    white-space: nowrap;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity .18s ease, transform .18s ease;
-  }
-
-  .camera-controls:hover::before {
-    opacity: 1;
-    transform: translateY(-50%) translateX(-2px);
-  }
 }

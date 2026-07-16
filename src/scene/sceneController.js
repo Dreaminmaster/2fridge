@@ -6,6 +6,7 @@ import { createFridge } from './createFridge.js';
 import { createFoodModel } from './createFoodModel.js';
 
 const ROOM_FLOOR_Y = -3.32;
+const FRIDGE_WALL_Z = -2.2;
 const PAN_LIMITS = { x: 4.6, y: 3.0, z: 2.6 };
 
 export function createSceneController({
@@ -58,7 +59,7 @@ export function createSceneController({
   setupLights(scene, profile);
   createRoom(scene);
   const fridge = createFridge(createMaterials());
-  fridge.group.position.set(0, 0, 0);
+  fridge.group.position.set(0, 0, FRIDGE_WALL_Z);
   scene.add(fridge.group);
   fridge.group.updateMatrixWorld(true);
   const fridgeLocalBottom = new THREE.Box3().setFromObject(fridge.group).min.y;
@@ -66,6 +67,7 @@ export function createSceneController({
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
   const foodMeshes = new Map();
+  const foodZones = new Map();
   const animations = [];
   const doorState = { upper: false, lower: false };
   const clock = new THREE.Clock();
@@ -169,19 +171,28 @@ export function createSceneController({
     pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     raycaster.setFromCamera(pointer, camera);
 
-    const foodHit = raycaster.intersectObjects([...foodMeshes.values()], true)[0];
-    if (foodHit) {
-      const root = findFoodRoot(foodHit.object);
-      if (root) onFoodSelect?.(root.userData.instanceId);
+    const doorHit = raycaster.intersectObjects(fridge.doorTargets, false)[0];
+    if (doorHit) {
+      const key = doorHit.object.userData.doorName === 'upper-door' ? 'upper' : 'lower';
+      doorState[key] = !doorState[key];
+      onDoorChange?.({ ...doorState });
+      invalidate(45);
       return;
     }
 
-    const doorHit = raycaster.intersectObjects(fridge.doorTargets, false)[0];
-    if (!doorHit) return;
-    const key = doorHit.object.userData.doorName === 'upper-door' ? 'upper' : 'lower';
-    doorState[key] = !doorState[key];
-    onDoorChange?.({ ...doorState });
-    invalidate(45);
+    const interactableFood = [...foodMeshes.entries()]
+      .filter(([instanceId]) => isFoodInteractable(foodZones.get(instanceId)))
+      .map(([, mesh]) => mesh);
+    const foodHit = raycaster.intersectObjects(interactableFood, true)[0];
+    if (!foodHit) return;
+    const root = findFoodRoot(foodHit.object);
+    if (root) onFoodSelect?.(root.userData.instanceId);
+  }
+
+  function isFoodInteractable(zone) {
+    if (zone === 'fridge' || zone === 'door') return doorState.upper;
+    if (zone === 'freezer') return doorState.lower;
+    return false;
   }
 
   function buildFoodMesh(food, item) {
@@ -201,6 +212,7 @@ export function createSceneController({
       const mesh = buildFoodMesh(food, item);
       fridge.foodRoots[item.zone].add(mesh);
       foodMeshes.set(item.instanceId, mesh);
+      foodZones.set(item.instanceId, item.zone);
       if (animate) animations.push({ mesh, age: 0 });
       else mesh.scale.setScalar(mesh.userData.targetScale ?? 1);
       invalidate(animate ? 30 : 1);
@@ -238,6 +250,7 @@ export function createSceneController({
     mesh.parent?.remove(mesh);
     disposeObject(mesh);
     foodMeshes.delete(instanceId);
+    foodZones.delete(instanceId);
     invalidate(1);
   }
 
@@ -316,18 +329,18 @@ export function createSceneController({
         baseScale = width < 390 ? 0.76 : 0.81;
         baseX = -0.38;
         camera.fov = width < 390 ? 42 : 39;
-        camera.position.set(8.4, 2.85, 17.5);
-        controls.target.set(-0.1, 0.05, -0.08);
+        camera.position.set(8.4, 2.85, 15.3);
+        controls.target.set(-0.1, 0.05, -2.28);
       } else {
         baseScale = width < 1000 ? 0.88 : 0.96;
         baseX = -0.62;
         camera.fov = 34;
-        camera.position.set(11.1, 2.8, 17.8);
-        controls.target.set(-0.3, 0.08, -0.18);
+        camera.position.set(11.1, 2.8, 15.6);
+        controls.target.set(-0.3, 0.08, -2.38);
       }
       initialView = { position: camera.position.clone(), target: controls.target.clone() };
       fridge.group.scale.setScalar(baseScale);
-      fridge.group.position.set(baseX, groundedY(baseScale), 0);
+      fridge.group.position.set(baseX, groundedY(baseScale), FRIDGE_WALL_Z);
       controls.update();
     }
 
@@ -347,16 +360,15 @@ export function createSceneController({
     const delta = Math.min(clock.getDelta(), 0.05);
     const upperTarget = doorState.upper ? 1.92 : 0;
     const lowerTarget = doorState.lower ? 1.82 : 0;
-    const anyOpen = doorState.upper || doorState.lower;
-    const desiredScale = baseScale * (anyOpen ? 0.94 : 1);
-    const desiredX = baseX + (anyOpen ? -0.72 : 0);
+    const desiredScale = baseScale;
+    const desiredX = baseX;
     const desiredY = groundedY(desiredScale);
 
     fridge.doors.upper.pivot.rotation.y = damp(fridge.doors.upper.pivot.rotation.y, upperTarget, 8.5, delta);
     fridge.doors.lower.pivot.rotation.y = damp(fridge.doors.lower.pivot.rotation.y, lowerTarget, 8.5, delta);
     fridge.group.position.x = damp(fridge.group.position.x, desiredX, 7.5, delta);
     fridge.group.position.y = damp(fridge.group.position.y, desiredY, 7.5, delta);
-    fridge.group.position.z = damp(fridge.group.position.z, 0, 8.5, delta);
+    fridge.group.position.z = damp(fridge.group.position.z, FRIDGE_WALL_Z, 8.5, delta);
     const nextScale = damp(fridge.group.scale.x, desiredScale, 6.5, delta);
     fridge.group.scale.setScalar(nextScale);
 
@@ -364,7 +376,7 @@ export function createSceneController({
       || !near(fridge.doors.lower.pivot.rotation.y, lowerTarget)
       || !near(fridge.group.position.x, desiredX)
       || !near(fridge.group.position.y, desiredY)
-      || !near(fridge.group.position.z, 0)
+      || !near(fridge.group.position.z, FRIDGE_WALL_Z)
       || !near(fridge.group.scale.x, desiredScale);
 
     for (let index = animations.length - 1; index >= 0; index -= 1) {

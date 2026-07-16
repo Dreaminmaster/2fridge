@@ -3,8 +3,8 @@ import { roundedBox } from './geometry.js';
 
 export function createFridge(materials) {
   const group = new THREE.Group();
-  group.rotation.y = -0.16;
-  group.position.set(-0.35, -0.05, 0);
+  group.rotation.y = 0;
+  group.position.set(0, -0.05, 0);
 
   const cabinetShadowCasters = addCabinet(group, materials);
   const upperDoor = createDoor({ y: 2.02, height: 4.98, rackCount: 3, name: 'upper-door', materials });
