@@ -1,5 +1,6 @@
 import './style.css';
 import './mobile-performance.css';
+import './desktop-polish.css';
 import { FOOD_CATALOG } from './data/foodCatalog.js';
 import { createInventoryStore } from './domain/inventoryStore.js';
 import { buildRecipeContext } from './domain/recipeContext.js';
@@ -23,7 +24,6 @@ const scene = createSceneController({
 ui = createUIController({ store, scene });
 moveFridgeButton?.addEventListener('click', () => scene.toggleMoveMode());
 
-// Stable, normalized data boundary for a future recipe recommendation module.
 globalThis.pocketFridge = {
   getInventory: () => store.getSnapshot(),
   getRecipeContext: () => buildRecipeContext(store.getSnapshot().items, FOOD_CATALOG),
