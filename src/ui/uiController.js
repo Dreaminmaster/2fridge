@@ -5,13 +5,17 @@ import { foodIconSvg } from './foodIcon.js';
 export function createUIController({ store, scene }) {
   const elements = collectElements();
   const catalogById = new Map(FOOD_CATALOG.map((food) => [food.id, food]));
-  const compactViewport = typeof globalThis.matchMedia === 'function' && globalThis.matchMedia('(max-width: 759px)').matches;
+  const foodToggleLabel = elements.foodToggle.querySelector('span');
   let activeCategory = 'all';
   let searchTerm = '';
   let selectedInstanceId = null;
   let activePanel = null;
   let toastTimer;
   let repairing = false;
+  let sessionAddedCount = 0;
+  let lastAdded = null;
+  let flashFoodId = null;
+  let flashTimer;
 
   FOOD_CATEGORIES.forEach((category) => {
     const button = document.createElement('button');
@@ -19,27 +23,49 @@ export function createUIController({ store, scene }) {
     button.className = `category-tab${category.id === activeCategory ? ' active' : ''}`;
     button.textContent = category.label;
     button.dataset.category = category.id;
-    button.addEventListener('click', () => { activeCategory = category.id; renderFoodGrid(store.getSnapshot()); });
+    button.addEventListener('click', () => {
+      activeCategory = category.id;
+      renderFoodGrid(store.getSnapshot(), { preserveScroll: false });
+    });
     elements.categoryTabs.appendChild(button);
   });
 
-  elements.foodToggle.addEventListener('click', () => setPanel(activePanel === 'food' ? null : 'food'));
+  elements.foodToggle.addEventListener('click', () => {
+    if (activePanel === 'food') setPanel(null);
+    else {
+      beginAddSession();
+      setPanel('food');
+    }
+  });
   elements.inventoryToggle.addEventListener('click', () => setPanel(activePanel === 'inventory' ? null : 'inventory'));
   elements.foodDrawerClose.addEventListener('click', () => setPanel(null));
   elements.inventoryDrawerClose.addEventListener('click', () => setPanel(null));
-  elements.foodSearch.addEventListener('input', (event) => { searchTerm = event.target.value.trim().toLowerCase(); renderFoodGrid(store.getSnapshot()); });
+  elements.foodSearch.addEventListener('input', (event) => {
+    searchTerm = event.target.value.trim().toLowerCase();
+    renderFoodGrid(store.getSnapshot(), { preserveScroll: false });
+  });
   elements.zoomInButton.addEventListener('click', scene.zoomIn);
   elements.zoomOutButton.addEventListener('click', scene.zoomOut);
   elements.resetViewButton.addEventListener('click', scene.resetView);
   elements.helpButton.addEventListener('click', () => openModal(elements.helpSheet));
   elements.resetButton.addEventListener('click', () => openModal(elements.confirmSheet));
-  elements.confirmReset.addEventListener('click', () => { store.clear(); closeModals(); setPanel(null); closeItemSheet(); showToast('冰箱已经清空'); });
+  elements.confirmReset.addEventListener('click', () => {
+    store.clear();
+    closeModals();
+    setPanel(null);
+    closeItemSheet();
+    beginAddSession();
+    showToast('冰箱已经清空');
+  });
   document.querySelectorAll('[data-close-modal]').forEach((button) => button.addEventListener('click', closeModals));
   elements.scrim.addEventListener('click', closeModals);
   elements.removeSelectedItem.addEventListener('click', removeSelected);
   elements.itemSheetClose.addEventListener('click', closeItemSheet);
+  elements.undoLastAdded.addEventListener('click', undoLastAddition);
+  document.addEventListener('keydown', handleKeydown);
 
   const unsubscribe = store.subscribe(render);
+  beginAddSession();
   render(store.getSnapshot());
 
   function render(snapshot) {
@@ -51,8 +77,12 @@ export function createUIController({ store, scene }) {
       showToast(`已自动清理 ${failedIds.length} 个无法显示的库存项`);
       return;
     }
+    if (lastAdded && !snapshot.items.some((item) => item.instanceId === lastAdded.instanceId)) {
+      lastAdded = null;
+      updateAddStatus(sessionAddedCount ? `本次已添加 ${sessionAddedCount} 件` : undefined);
+    }
     renderCapacity(snapshot);
-    renderFoodGrid(snapshot);
+    renderFoodGrid(snapshot, { preserveScroll: true });
     renderInventory(snapshot);
     if (selectedInstanceId && !snapshot.items.some((item) => item.instanceId === selectedInstanceId)) closeItemSheet();
   }
@@ -66,7 +96,8 @@ export function createUIController({ store, scene }) {
     }).join('');
   }
 
-  function renderFoodGrid(snapshot) {
+  function renderFoodGrid(snapshot, { preserveScroll = true } = {}) {
+    const previousScroll = preserveScroll ? elements.foodGrid.scrollTop : 0;
     document.querySelectorAll('.category-tab').forEach((tab) => tab.classList.toggle('active', tab.dataset.category === activeCategory));
     const visible = FOOD_CATALOG.filter((food) => {
       const categoryMatch = activeCategory === 'all' || food.category === activeCategory;
@@ -86,13 +117,15 @@ export function createUIController({ store, scene }) {
         : `放入${zone.shortLabel}${nextSlot?.depthLabel && nextSlot.depthLabel !== '门架' ? ` · ${nextSlot.depthLabel}` : ''}`;
       const button = document.createElement('button');
       button.type = 'button';
-      button.className = `food-card${full ? ' food-card--disabled' : ''}`;
+      button.dataset.foodId = food.id;
+      button.className = `food-card${full ? ' food-card--disabled' : ''}${flashFoodId === food.id ? ' food-card--added' : ''}`;
       button.disabled = full;
       button.innerHTML = `${foodIconSvg(food)}<span class="food-card__copy"><strong>${food.name}</strong><small>${placementCopy}</small></span>${count ? `<span class="food-card__count">${count}</span>` : ''}`;
       button.addEventListener('click', () => addFood(food));
       elements.foodGrid.appendChild(button);
     });
     if (!visible.length) elements.foodGrid.innerHTML = '<p class="empty-state">没有找到匹配的食材</p>';
+    requestAnimationFrame(() => { elements.foodGrid.scrollTop = previousScroll; });
   }
 
   function renderInventory(snapshot) {
@@ -115,7 +148,10 @@ export function createUIController({ store, scene }) {
         row.innerHTML = `<span class="inventory-row__icon">${foodIconSvg(food)}</span><span class="inventory-row__copy"><strong>${food.name}</strong><small>${items.length} ${food.unit}${depthSummary}</small></span><button class="remove-one" type="button" aria-label="移除一个${food.name}">−</button>`;
         row.querySelector('.remove-one').addEventListener('click', () => {
           const result = store.removeOne(foodId);
-          if (result.ok) { scene.removeItem(result.item.instanceId); showToast(`已移除一个${food.name}`); }
+          if (result.ok) {
+            scene.removeItem(result.item.instanceId);
+            showToast(`已移除一个${food.name}`);
+          }
         });
         section.appendChild(row);
       });
@@ -131,27 +167,68 @@ export function createUIController({ store, scene }) {
       return;
     }
 
-    // Stage the model before mutating inventory. A failed model can no longer
-    // create invisible items that silently consume every storage slot.
     const staged = scene.stageItem(food, prepared.item, { animate: true });
     if (!staged.ok) {
       showToast(`${food.name}模型加载失败，未占用冰箱容量`);
       return;
     }
 
+    flashFoodId = food.id;
     const committed = store.commitPrepared(prepared.item);
     if (!committed.ok) {
+      flashFoodId = null;
       scene.removeItem(prepared.item.instanceId);
       showToast('存放位置刚刚发生变化，请再试一次');
       return;
     }
 
+    sessionAddedCount += 1;
+    lastAdded = { instanceId: prepared.item.instanceId, foodId: food.id };
     const slot = SLOT_LAYOUT[prepared.item.zone][prepared.item.slot];
     scene.revealItem(prepared.item.instanceId, food.target);
-    if (compactViewport) setTimeout(() => setPanel(null), 70);
     const depthCopy = slot?.depthLabel && slot.depthLabel !== '门架' ? ` · ${slot.depthLabel}` : '';
     const shelfCopy = slot?.shelf != null ? `第${slot.shelf + 1}层` : '';
-    showToast(`${food.name}已放入${ZONE_META[food.target].label}${shelfCopy ? ` · ${shelfCopy}` : ''}${depthCopy}`);
+    updateAddStatus(`已添加 ${food.name}${shelfCopy ? ` · ${shelfCopy}` : ''}${depthCopy}`);
+    scheduleFlashClear();
+    tryHaptic(12);
+  }
+
+  function undoLastAddition() {
+    if (!lastAdded) return;
+    const food = getFoodById(lastAdded.foodId);
+    const result = store.remove(lastAdded.instanceId);
+    if (!result.ok) {
+      lastAdded = null;
+      updateAddStatus();
+      return;
+    }
+    scene.removeItem(lastAdded.instanceId);
+    sessionAddedCount = Math.max(0, sessionAddedCount - 1);
+    lastAdded = null;
+    updateAddStatus(`已撤销${food?.name ? ` ${food.name}` : '上一次添加'}`);
+    tryHaptic(8);
+  }
+
+  function beginAddSession() {
+    sessionAddedCount = 0;
+    lastAdded = null;
+    flashFoodId = null;
+    clearTimeout(flashTimer);
+    updateAddStatus();
+  }
+
+  function updateAddStatus(message) {
+    elements.foodDrawerStatusText.textContent = message ?? '可连续添加，面板不会自动关闭';
+    elements.foodDrawerStatus.classList.toggle('food-drawer-status--active', Boolean(lastAdded));
+    elements.undoLastAdded.disabled = !lastAdded;
+  }
+
+  function scheduleFlashClear() {
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => {
+      flashFoodId = null;
+      document.querySelectorAll('.food-card--added').forEach((card) => card.classList.remove('food-card--added'));
+    }, 760);
   }
 
   function selectItem(instanceId) {
@@ -174,7 +251,10 @@ export function createUIController({ store, scene }) {
     const item = store.getSnapshot().items.find((entry) => entry.instanceId === selectedInstanceId);
     const food = item ? getFoodById(item.foodId) : null;
     const result = store.remove(selectedInstanceId);
-    if (result.ok) { scene.removeItem(selectedInstanceId); showToast(`已移除${food?.name ?? '食材'}`); }
+    if (result.ok) {
+      scene.removeItem(selectedInstanceId);
+      showToast(`已移除${food?.name ?? '食材'}`);
+    }
     closeItemSheet();
   }
 
@@ -192,6 +272,7 @@ export function createUIController({ store, scene }) {
     elements.inventoryDrawer.setAttribute('aria-hidden', String(panel !== 'inventory'));
     elements.foodToggle.setAttribute('aria-expanded', String(panel === 'food'));
     elements.inventoryToggle.setAttribute('aria-expanded', String(panel === 'inventory'));
+    if (foodToggleLabel) foodToggleLabel.textContent = panel === 'food' ? '添加中' : '添加';
     closeItemSheet();
   }
 
@@ -204,9 +285,21 @@ export function createUIController({ store, scene }) {
   }
 
   function closeModals() {
-    document.querySelectorAll('.modal-sheet.open').forEach((modal) => { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); });
+    document.querySelectorAll('.modal-sheet.open').forEach((modal) => {
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    });
     elements.scrim.classList.remove('open');
-    setTimeout(() => { if (!document.querySelector('.modal-sheet.open')) elements.scrim.hidden = true; }, 180);
+    setTimeout(() => {
+      if (!document.querySelector('.modal-sheet.open')) elements.scrim.hidden = true;
+    }, 180);
+  }
+
+  function handleKeydown(event) {
+    if (event.key !== 'Escape') return;
+    if (document.querySelector('.modal-sheet.open')) closeModals();
+    else if (activePanel) setPanel(null);
+    else closeItemSheet();
   }
 
   function showToast(message) {
@@ -216,12 +309,23 @@ export function createUIController({ store, scene }) {
     toastTimer = setTimeout(() => elements.toast.classList.remove('show'), 1800);
   }
 
-  return { selectItem, hideGestureHint: () => elements.gestureHint.classList.add('hidden'), destroy: unsubscribe };
+  function tryHaptic(duration) {
+    try { globalThis.navigator?.vibrate?.(duration); } catch { /* Optional feedback only. */ }
+  }
+
+  function destroy() {
+    clearTimeout(toastTimer);
+    clearTimeout(flashTimer);
+    document.removeEventListener('keydown', handleKeydown);
+    unsubscribe();
+  }
+
+  return { selectItem, hideGestureHint: () => elements.gestureHint.classList.add('hidden'), destroy };
 }
 
 function collectElements() {
   return Object.fromEntries([
-    'foodToggle', 'inventoryToggle', 'foodDrawer', 'inventoryDrawer', 'foodDrawerClose', 'inventoryDrawerClose', 'foodSearch', 'foodGrid', 'categoryTabs', 'inventoryCount', 'zoneMeters', 'inventorySections', 'zoomInButton', 'zoomOutButton', 'resetViewButton', 'helpButton', 'resetButton', 'helpSheet', 'confirmSheet', 'confirmReset', 'scrim', 'itemSheet', 'itemSheetIcon', 'itemSheetName', 'itemSheetMeta', 'removeSelectedItem', 'itemSheetClose', 'toast', 'gestureHint',
+    'foodToggle', 'inventoryToggle', 'foodDrawer', 'inventoryDrawer', 'foodDrawerClose', 'inventoryDrawerClose', 'foodSearch', 'foodGrid', 'categoryTabs', 'foodDrawerStatus', 'foodDrawerStatusText', 'undoLastAdded', 'inventoryCount', 'zoneMeters', 'inventorySections', 'zoomInButton', 'zoomOutButton', 'resetViewButton', 'helpButton', 'resetButton', 'helpSheet', 'confirmSheet', 'confirmReset', 'scrim', 'itemSheet', 'itemSheetIcon', 'itemSheetName', 'itemSheetMeta', 'removeSelectedItem', 'itemSheetClose', 'toast', 'gestureHint',
   ].map((id) => [id, document.getElementById(id)]));
 }
 
