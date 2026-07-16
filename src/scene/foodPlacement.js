@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { enhanceFoodModel } from './foodDetails.js';
 
 const EPSILON = 1e-4;
 
@@ -10,6 +11,7 @@ const EPSILON = 1e-4;
 export function prepareFoodPlacement(root, slot) {
   if (!slot) throw new Error('A storage slot is required');
 
+  enhanceFoodModel(root);
   root.position.set(0, 0, 0);
   root.rotation.set(0, 0, 0);
   root.scale.setScalar(1);
@@ -22,8 +24,6 @@ export function prepareFoodPlacement(root, slot) {
   const center = bounds.getCenter(new THREE.Vector3());
   const offset = new THREE.Vector3(-center.x, -bounds.min.y, -center.z);
 
-  // Move the generated geometry inside the root rather than shifting the
-  // root itself. The root remains the stable inventory/animation anchor.
   root.children.forEach((child) => child.position.add(offset));
 
   const widthFit = finiteFit(slot.maxWidth, size.x);
