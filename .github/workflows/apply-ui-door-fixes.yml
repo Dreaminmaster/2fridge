@@ -1,0 +1,39 @@
+name: Apply UI and door fixes
+
+on:
+  push:
+    branches:
+      - fix-door-hitbox-wall-ui-copy-v2
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-ui-door-fixes
+  cancel-in-progress: true
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix-door-hitbox-wall-ui-copy-v2
+          fetch-depth: 0
+
+      - name: Apply source fixes
+        run: node scripts/apply-ui-door-fixes.mjs
+
+      - name: Commit source fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src index.html tests
+          if git diff --cached --quiet; then
+            echo "No source changes required"
+            exit 0
+          fi
+          git commit -m "Fix door occlusion, cabinet position, wall alignment, and UI copy"
+          git push origin HEAD:fix-door-hitbox-wall-ui-copy-v2
