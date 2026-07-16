@@ -28,6 +28,7 @@ const files = await Promise.all([
   'src/style.css',
   'src/mobile-performance.css',
   'src/main.js',
+  'index.html',
   'README.md',
 ].map((path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8')));
 
@@ -51,9 +52,16 @@ assert.ok(files[5].includes('supportY'));
 assert.ok(files[6].includes('store.prepareAdd'));
 assert.ok(files[6].includes('store.commitPrepared'));
 assert.ok(files[6].includes('scene.stageItem'));
+assert.ok(files[6].includes('undoLastAddition'));
+assert.ok(files[6].includes('elements.foodGrid.scrollTop = previousScroll'));
+assert.ok(!files[6].includes('setTimeout(() => setPanel(null)'));
 assert.ok(!files[7].includes('statusText'));
+assert.ok(files[7].includes('.food-drawer-status'));
+assert.ok(files[7].includes('.food-card--added'));
 assert.ok(files[8].includes('.camera-controls'));
 assert.ok(files[8].includes('display: none'));
 assert.ok(files[9].includes("import './mobile-performance.css'"));
-assert.ok(files[10].includes('https://dreaminmaster.github.io/2fridge/'));
-console.log(`Project validation passed: ${FOOD_CATALOG.length} foods, physical grounding, collision envelopes, transactional inventory, full-quality on-demand mobile rendering.`);
+assert.ok(files[10].includes('id="foodDrawerStatus"'));
+assert.ok(files[10].includes('id="undoLastAdded"'));
+assert.ok(files[11].includes('https://dreaminmaster.github.io/2fridge/'));
+console.log(`Project validation passed: ${FOOD_CATALOG.length} foods, physical grounding, collision envelopes, transactional inventory, continuous mobile adding, full-quality on-demand rendering.`);
