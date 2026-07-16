@@ -50,15 +50,19 @@
           <div class="drawer-header">
             <div>
               <h2>添加食材</h2>
-              <p>每层会自动分配到后排或前排的空位</p>
+              <p>连续选择食材，系统会自动分配前后排空位</p>
             </div>
-            <button id="foodDrawerClose" class="icon-button icon-button--plain" type="button" aria-label="关闭食材面板">×</button>
+            <button id="foodDrawerClose" class="drawer-done-button" type="button" aria-label="完成添加食材">完成</button>
           </div>
           <label class="search-field">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>
             <input id="foodSearch" type="search" placeholder="搜索鸡蛋、西红柿、牛肉、果汁……" autocomplete="off" />
           </label>
           <div id="categoryTabs" class="category-tabs" role="tablist" aria-label="食材分类"></div>
+          <div id="foodDrawerStatus" class="food-drawer-status" aria-live="polite">
+            <span id="foodDrawerStatusText">可连续添加，面板不会自动关闭</span>
+            <button id="undoLastAdded" class="undo-add-button" type="button" disabled>撤销</button>
+          </div>
           <div id="foodGrid" class="food-grid"></div>
         </aside>
 
@@ -96,7 +100,8 @@
           <div class="help-grid">
             <article><b>拖动</b><span>旋转查看冰箱深处、侧面和柜门内侧</span></article>
             <article><b>双指或滚轮</b><span>平滑放大和缩小冰箱</span></article>
-            <article><b>前后两排</b><span>同一层先放后排，再放前排；旋转后可以看清深处</span></article>
+            <article><b>前后两排</b><span>同一层优先放前排，放满后再使用后排</span></article>
+            <article><b>连续添加</b><span>食材面板会保持打开，完成后再主动关闭</span></article>
             <article><b>轻点食物</b><span>查看所在层与前后排，并可单独移除</span></article>
           </div>
         </div>
