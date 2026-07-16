@@ -33,7 +33,6 @@ export function createFridge(materials) {
 }
 
 function addCabinet(group, materials) {
-  // A genuinely deep cabinet: the usable cavity runs from roughly z=-1.9 to z=1.75.
   const back = roundedBox(5.2, 8.45, 0.3, 0.18, materials.mintDark); back.position.set(0, 0.7, -2.08);
   const left = roundedBox(0.42, 8.45, 4.55, 0.18, materials.mint); left.position.set(-2.42, 0.7, -0.02);
   const right = left.clone(); right.position.x = 2.42;
@@ -47,19 +46,39 @@ function addCabinet(group, materials) {
   [2.95, 1.75, 0.57].forEach((y) => {
     const shelf = roundedBox(4, 0.11, 3.72, 0.04, materials.white);
     shelf.position.set(0, y, -0.12);
-    group.add(shelf);
+    const frontLip = roundedBox(4.04, 0.15, 0.16, 0.04, materials.cream);
+    frontLip.position.set(0, y + 0.08, 1.65);
+    const backStop = roundedBox(4.04, 0.13, 0.14, 0.04, materials.cream);
+    backStop.position.set(0, y + 0.07, -1.83);
+    group.add(shelf, frontLip, backStop);
   });
+
   const freezerShelf = roundedBox(4, 0.11, 3.72, 0.04, materials.white);
   freezerShelf.position.set(0, -2.33, -0.12);
-  group.add(freezerShelf);
+  const freezerFrontLip = roundedBox(4.04, 0.15, 0.16, 0.04, materials.cream);
+  freezerFrontLip.position.set(0, -2.25, 1.65);
+  const freezerBackStop = roundedBox(4.04, 0.13, 0.14, 0.04, materials.cream);
+  freezerBackStop.position.set(0, -2.26, -1.83);
+  const freezerFloor = roundedBox(4, 0.12, 3.72, 0.05, materials.white);
+  freezerFloor.position.set(0, -3.08, -0.12);
+  const freezerFloorLip = roundedBox(4.04, 0.18, 0.18, 0.05, materials.cream);
+  freezerFloorLip.position.set(0, -2.99, 1.65);
+  group.add(freezerShelf, freezerFrontLip, freezerBackStop, freezerFloor, freezerFloorLip);
 
-  // Small side rails make the front/back depth readable when the fridge is rotated.
-  [3.03, 1.83, 0.65, -2.25].forEach((y) => {
+  [3.03, 1.83, 0.65, -2.25, -3.00].forEach((y) => {
     const leftRail = roundedBox(0.12, 0.13, 3.55, 0.035, materials.cream);
     leftRail.position.set(-2.04, y, -0.12);
     const rightRail = leftRail.clone(); rightRail.position.x = 2.04;
     group.add(leftRail, rightRail);
   });
+
+  const thermostat = roundedBox(0.92, 0.34, 0.10, 0.06, materials.cream);
+  thermostat.position.set(1.36, 4.03, -1.80);
+  const thermostatDot = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), materials.mintDark);
+  thermostatDot.position.set(1.62, 4.03, -1.72);
+  const lightHousing = roundedBox(1.18, 0.25, 0.18, 0.07, materials.white);
+  lightHousing.position.set(-0.90, 4.11, -1.73);
+  group.add(thermostat, thermostatDot, lightHousing);
 
   const trim = [
     [-2.18, 2.02, 0.18, 4.95], [2.18, 2.02, 0.18, 4.95], [0, 4.42, 4.48, 0.18], [0, -0.56, 4.48, 0.18],
@@ -99,7 +118,12 @@ function createDoor({ y, height, rackCount, name, materials }) {
     rackBack.position.set(-2.38, yPosition, -0.40);
     const rail = roundedBox(3.66, 0.18, 0.72, 0.06, materials.white);
     rail.position.set(-2.38, yPosition - 0.25, -0.82);
-    pivot.add(rackBack, rail);
+    const frontGuard = roundedBox(3.66, 0.16, 0.14, 0.05, materials.cream);
+    frontGuard.position.set(-2.38, yPosition - 0.08, -1.15);
+    const leftGuard = roundedBox(0.16, 0.44, 0.64, 0.05, materials.cream);
+    leftGuard.position.set(-4.12, yPosition - 0.06, -0.82);
+    const rightGuard = leftGuard.clone(); rightGuard.position.x = -0.64;
+    pivot.add(rackBack, rail, frontGuard, leftGuard, rightGuard);
   }
 
   const hingeTop = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.5, 8), materials.metal);
