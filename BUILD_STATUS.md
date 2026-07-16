@@ -1,7 +1,7 @@
 # Pocket Fridge workflow status
 
-- Workflow run: `29470739760`
-- Source commit: `56ce9564d303092dd6d2095e059890900b25e770`
-- Build: `success`
-- Deploy: `success`
-- Recorded at: 2026-07-16 04:11:41 UTC
+- Workflow run: `29472621940`
+- Source commit: `106f6d8b794c5a43ebda84f57649c0b340ea11a1`
+- Build: `failure`
+- Deploy: `skipped`
+- Recorded at: 2026-07-16 04:57:59 UTC
