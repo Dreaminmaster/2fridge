@@ -29,7 +29,7 @@
           <button id="resetViewButton" class="control-button control-button--reset" type="button" aria-label="恢复默认视角">⌂</button>
         </div>
 
-        <p id="gestureHint" class="gesture-hint">拖动旋转 · 双指缩放 · 电脑触控板双指平移</p>
+        <p id="gestureHint" class="gesture-hint" hidden></p>
 
         <button id="foodToggle" class="food-toggle" type="button" aria-controls="foodDrawer" aria-expanded="false">
           <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 11h18l-2 14H9L7 11Zm4-5 5 5 5-5"/></svg>
@@ -50,7 +50,6 @@
           <div class="drawer-header">
             <div>
               <h2>添加食材</h2>
-              <p>连续选择食材，系统会自动分配四层前后排空位</p>
             </div>
             <button id="foodDrawerClose" class="drawer-done-button" type="button" aria-label="完成添加食材">完成</button>
           </div>
@@ -60,7 +59,7 @@
           </label>
           <div id="categoryTabs" class="category-tabs" role="tablist" aria-label="食材分类"></div>
           <div id="foodDrawerStatus" class="food-drawer-status" aria-live="polite">
-            <span id="foodDrawerStatusText">可连续添加，面板不会自动关闭</span>
+            <span id="foodDrawerStatusText"></span>
             <button id="undoLastAdded" class="undo-add-button" type="button" disabled>撤销</button>
           </div>
           <div id="foodGrid" class="food-grid"></div>
@@ -71,7 +70,6 @@
           <div class="drawer-header">
             <div>
               <h2>冰箱内容</h2>
-              <p>逐件移除后，前后排空位会自动重新利用</p>
             </div>
             <button id="inventoryDrawerClose" class="icon-button icon-button--plain" type="button" aria-label="关闭库存面板">×</button>
           </div>
@@ -98,11 +96,9 @@
           <button class="icon-button icon-button--plain modal-sheet__close" data-close-modal type="button" aria-label="关闭">×</button>
           <h2>如何使用</h2>
           <div class="help-grid">
-            <article><b>拖动旋转</b><span>鼠标左键或单指拖动，查看冰箱深处和柜门内侧</span></article>
-            <article><b>电脑平移</b><span>Mac 触控板双指滑动，或按住鼠标右键拖动，移动整个视角</span></article>
-            <article><b>缩放</b><span>触控板捏合、鼠标滚轮或电脑端视角按钮缩放</span></article>
-            <article><b>冷藏四层</b><span>三块层板加底部内衬，每层都有前排和后排</span></article>
-            <article><b>连续添加</b><span>食材面板会保持打开，完成后再主动关闭</span></article>
+            <article><b>拖动旋转</b><span>查看冰箱深处和柜门内侧</span></article>
+            <article><b>开关柜门</b><span>点击上门或下门进行开合</span></article>
+            <article><b>冷藏四层</b><span>每层都有前排和后排</span></article>
             <article><b>轻点食物</b><span>查看所在层与前后排，并可单独移除</span></article>
           </div>
         </div>

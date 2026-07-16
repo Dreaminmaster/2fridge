@@ -218,7 +218,7 @@ export function createUIController({ store, scene }) {
   }
 
   function updateAddStatus(message) {
-    elements.foodDrawerStatusText.textContent = message ?? '可连续添加，面板不会自动关闭';
+    elements.foodDrawerStatusText.textContent = message ?? '';
     elements.foodDrawerStatus.classList.toggle('food-drawer-status--active', Boolean(lastAdded));
     elements.undoLastAdded.disabled = !lastAdded;
   }
