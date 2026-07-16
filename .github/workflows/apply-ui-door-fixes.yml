@@ -1,4 +1,4 @@
-name: Apply UI and door fixes
+name: Validate and clean UI and door fixes
 
 on:
   push:
@@ -9,11 +9,11 @@ permissions:
   contents: write
 
 concurrency:
-  group: apply-ui-door-fixes
+  group: validate-ui-door-fixes
   cancel-in-progress: true
 
 jobs:
-  apply:
+  validate:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
@@ -23,17 +23,30 @@ jobs:
           ref: fix-door-hitbox-wall-ui-copy-v2
           fetch-depth: 0
 
-      - name: Apply source fixes
-        run: node scripts/apply-ui-door-fixes.mjs
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
 
-      - name: Commit source fixes
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build production site
+        run: npm run build
+
+      - name: Remove one-time tooling
+        run: |
+          rm -f scripts/apply-ui-door-fixes.mjs
+          rm -f .github/workflows/apply-ui-door-fixes.yml
+
+      - name: Commit validated cleanup
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src index.html tests
-          if git diff --cached --quiet; then
-            echo "No source changes required"
-            exit 0
-          fi
-          git commit -m "Fix door occlusion, cabinet position, wall alignment, and UI copy"
+          git add -A
+          git commit -m "Remove one-time patch tooling after validation"
           git push origin HEAD:fix-door-hitbox-wall-ui-copy-v2
