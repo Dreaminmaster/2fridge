@@ -1,219 +1,91 @@
 # Pocket Fridge validation failure
 
-- Workflow run: `29472660027`
-- Source commit: `cf645850dca5487792fdc3b4811338d163f724ef`
-- Recorded at: 2026-07-16 04:58:41 UTC
+- Workflow run: `29472707995`
+- Source commit: `51f776cfce4b7329e00efe68553d60bd7b433c24`
+- Recorded at: 2026-07-16 05:00:04 UTC
 
 ```text
-  type: 'test'
-  ...
-# Subtest: 可乐 rests inside door slot 0
-ok 260 - 可乐 rests inside door slot 0
+not ok 3 - all slots stay within the deep cabinet cavity
   ---
-  duration_ms: 0.26269
+  duration_ms: 2.834041
   type: 'test'
+  location: '/home/runner/work/2fridge/2fridge/tests/fridgeLayout.test.mjs:22:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The expression evaluated to a falsy value:
+    
+      assert.ok(slot.scale <= 0.7)
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    file:///home/runner/work/2fridge/2fridge/tests/fridgeLayout.test.mjs:27:14
+    Array.forEach (<anonymous>)
+    TestContext.<anonymous> (file:///home/runner/work/2fridge/2fridge/tests/fridgeLayout.test.mjs:24:23)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
   ...
-# Subtest: 可乐 rests inside door slot 4
-ok 261 - 可乐 rests inside door slot 4
+# Subtest: capacity is enforced per storage zone and overfilling is rejected
+ok 4 - capacity is enforced per storage zone and overfilling is rejected
   ---
-  duration_ms: 0.257923
+  duration_ms: 2.845241
   type: 'test'
   ...
-# Subtest: 可乐 rests inside door slot 8
-ok 262 - 可乐 rests inside door slot 8
+# Subtest: removing one item frees its exact slot for reuse
+ok 5 - removing one item frees its exact slot for reuse
   ---
-  duration_ms: 0.28291
+  duration_ms: 1.051739
   type: 'test'
-  ...
-# Subtest: 牛奶 rests inside door slot 0
-ok 263 - 牛奶 rests inside door slot 0
+not ok 9 - back row remains raised and visible after the front row fills
   ---
-  duration_ms: 0.967285
+  duration_ms: 4.35975
   type: 'test'
+  location: '/home/runner/work/2fridge/2fridge/tests/mobileVisibility.test.mjs:35:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The expression evaluated to a falsy value:
+    
+      assert.ok(back.y > front.y)
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///home/runner/work/2fridge/2fridge/tests/mobileVisibility.test.mjs:40:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
   ...
-# Subtest: 牛奶 rests inside door slot 4
-ok 264 - 牛奶 rests inside door slot 4
+# Subtest: 3D model renders for 牛肉条
+ok 10 - 3D model renders for 牛肉条
   ---
-  duration_ms: 1.033853
+  duration_ms: 37.844973
   type: 'test'
   ...
-# Subtest: 牛奶 rests inside door slot 8
-ok 265 - 牛奶 rests inside door slot 8
+# Subtest: 3D model renders for 羊肉条
+ok 11 - 3D model renders for 羊肉条
   ---
-  duration_ms: 0.971551
+  duration_ms: 8.597844
   type: 'test'
   ...
-# Subtest: 酱料瓶 rests inside door slot 0
-ok 266 - 酱料瓶 rests inside door slot 0
-  ---
-  duration_ms: 0.239525
-  type: 'test'
-  ...
-# Subtest: 酱料瓶 rests inside door slot 4
-ok 267 - 酱料瓶 rests inside door slot 4
-  ---
-  duration_ms: 0.205765
-  type: 'test'
-  ...
-# Subtest: 酱料瓶 rests inside door slot 8
-ok 268 - 酱料瓶 rests inside door slot 8
-  ---
-  duration_ms: 0.20168
-  type: 'test'
-  ...
-# Subtest: 果汁 rests inside door slot 0
-ok 269 - 果汁 rests inside door slot 0
-  ---
-  duration_ms: 1.306428
-  type: 'test'
-  ...
-# Subtest: 果汁 rests inside door slot 4
-ok 270 - 果汁 rests inside door slot 4
-  ---
-  duration_ms: 1.506095
-  type: 'test'
-  ...
-# Subtest: 果汁 rests inside door slot 8
-ok 271 - 果汁 rests inside door slot 8
-  ---
-  duration_ms: 1.080082
-  type: 'test'
-  ...
-# Subtest: 矿泉水 rests inside door slot 0
-ok 272 - 矿泉水 rests inside door slot 0
-  ---
-  duration_ms: 0.260847
-  type: 'test'
-  ...
-# Subtest: 矿泉水 rests inside door slot 4
-ok 273 - 矿泉水 rests inside door slot 4
-  ---
-  duration_ms: 0.212315
-  type: 'test'
-  ...
-# Subtest: 矿泉水 rests inside door slot 8
-ok 274 - 矿泉水 rests inside door slot 8
-  ---
-  duration_ms: 0.214478
-  type: 'test'
-  ...
-# Subtest: 气泡水 rests inside door slot 0
-ok 275 - 气泡水 rests inside door slot 0
-  ---
-  duration_ms: 1.343418
-  type: 'test'
-  ...
-# Subtest: 气泡水 rests inside door slot 4
-ok 276 - 气泡水 rests inside door slot 4
-  ---
-  duration_ms: 0.557037
-  type: 'test'
-  ...
-# Subtest: 气泡水 rests inside door slot 8
-ok 277 - 气泡水 rests inside door slot 8
-  ---
-  duration_ms: 0.516987
-  type: 'test'
-  ...
-# Subtest: 番茄酱 rests inside door slot 0
-ok 278 - 番茄酱 rests inside door slot 0
-  ---
-  duration_ms: 0.387465
-  type: 'test'
-  ...
-# Subtest: 番茄酱 rests inside door slot 4
-ok 279 - 番茄酱 rests inside door slot 4
-  ---
-  duration_ms: 0.39086
-  type: 'test'
-  ...
-# Subtest: 番茄酱 rests inside door slot 8
-ok 280 - 番茄酱 rests inside door slot 8
-  ---
-  duration_ms: 0.430959
-  type: 'test'
-  ...
-# Subtest: 蛋黄酱 rests inside door slot 0
-ok 281 - 蛋黄酱 rests inside door slot 0
-  ---
-  duration_ms: 0.373834
-  type: 'test'
-  ...
-# Subtest: 蛋黄酱 rests inside door slot 4
-ok 282 - 蛋黄酱 rests inside door slot 4
-  ---
-  duration_ms: 0.402858
-  type: 'test'
-  ...
-# Subtest: 蛋黄酱 rests inside door slot 8
-ok 283 - 蛋黄酱 rests inside door slot 8
-  ---
-  duration_ms: 0.389508
-  type: 'test'
-  ...
-# Subtest: 果酱 rests inside door slot 0
-ok 284 - 果酱 rests inside door slot 0
-  ---
-  duration_ms: 0.315578
-  type: 'test'
-  ...
-# Subtest: 果酱 rests inside door slot 4
-ok 285 - 果酱 rests inside door slot 4
-  ---
-  duration_ms: 0.305103
-  type: 'test'
-  ...
-# Subtest: 果酱 rests inside door slot 8
-ok 286 - 果酱 rests inside door slot 8
-  ---
-  duration_ms: 0.329659
-  type: 'test'
-  ...
-# Subtest: adjacent shelf slots keep a collision-safe horizontal gap
-ok 287 - adjacent shelf slots keep a collision-safe horizontal gap
-  ---
-  duration_ms: 0.53217
-  type: 'test'
-  ...
-# Subtest: front and back rows have separate depth envelopes
-ok 288 - front and back rows have separate depth envelopes
-  ---
-  duration_ms: 0.199717
-  type: 'test'
-  ...
-# Subtest: recipe context groups independent inventory instances into normalized ingredients
-ok 289 - recipe context groups independent inventory instances into normalized ingredients
-  ---
-  duration_ms: 1.659242
-  type: 'test'
-  ...
-# Pocket Fridge subscriber failed: Error: render failed
-#     at file:///home/runner/work/2fridge/2fridge/tests/transactionalInventory.test.mjs:29:33
-#     at file:///home/runner/work/2fridge/2fridge/src/domain/inventoryStore.js:105:9
-#     at Set.forEach (<anonymous>)
-#     at persist (file:///home/runner/work/2fridge/2fridge/src/domain/inventoryStore.js:103:15)
-#     at commitPrepared (file:///home/runner/work/2fridge/2fridge/src/domain/inventoryStore.js:58:5)
-#     at Object.add (file:///home/runner/work/2fridge/2fridge/src/domain/inventoryStore.js:64:26)
-#     at TestContext.<anonymous> (file:///home/runner/work/2fridge/2fridge/tests/transactionalInventory.test.mjs:30:24)
-#     at Test.runInAsyncScope (node:async_hooks:214:14)
-#     at Test.run (node:internal/test_runner/test:1047:25)
-#     at Test.processPendingSubtests (node:internal/test_runner/test:744:18)
-# Subtest: prepareAdd does not consume capacity before commit
-ok 290 - prepareAdd does not consume capacity before commit
-  ---
-  duration_ms: 1.959067
-  type: 'test'
-  ...
-# Subtest: a failing subscriber cannot interrupt a committed mutation
-ok 291 - a failing subscriber cannot interrupt a committed mutation
-  ---
-  duration_ms: 3.847148
-  type: 'test'
-  ...
-# Subtest: legacy duplicate and invalid slots are repaired on load
+# Subtest: 3D model renders for 鸡肉块
+
+--- test totals ---
 ok 292 - legacy duplicate and invalid slots are repaired on load
   ---
-  duration_ms: 1.323023
+  duration_ms: 0.805913
   type: 'test'
   ...
 1..292
@@ -224,5 +96,5 @@ ok 292 - legacy duplicate and invalid slots are repaired on load
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 650.183604
+# duration_ms 407.021162
 ```
