@@ -97,8 +97,6 @@ export function createFoodModel(food, inventoryItem) {
       break;
     case 'sausage':
       for (let index = 0; index < 3; index += 1) {
-        // CapsuleGeometry is not available on every Three.js build. Compose the
-        // sausage from core geometries so every catalogue item renders reliably.
         const material = index % 2 ? b : a;
         const sausage = new THREE.Group();
         const body = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.6, 8), material);
@@ -129,7 +127,10 @@ export function createFoodModel(food, inventoryItem) {
       rimTop.rotation.x = Math.PI / 2;
       rimTop.position.y = 0.36;
       add(rimTop);
-      const rimBottom = rimTop.clone();
+      // Create the bottom rim independently. Cloning rimTop after add() would
+      // copy its circular foodRoot reference and fail inside Three.js.
+      const rimBottom = new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.025, 5, 10), b);
+      rimBottom.rotation.x = Math.PI / 2;
       rimBottom.position.y = -0.36;
       add(rimBottom);
       break;
@@ -267,10 +268,9 @@ export function createFoodModel(food, inventoryItem) {
       add(banana);
       break;
     }
-    case 'bread': {
+    case 'bread':
       add(roundedBox(0.9, 0.5, 0.62, 0.18, a));
       break;
-    }
     case 'bowl': {
       const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.3, 0.34, 10), b);
       bowl.position.y = -0.12;
