@@ -29,7 +29,7 @@
           <button id="resetViewButton" class="control-button control-button--reset" type="button" aria-label="恢复默认视角">⌂</button>
         </div>
 
-        <p id="gestureHint" class="gesture-hint">拖动旋转 · 双指缩放 · 轻点柜门或食物</p>
+        <p id="gestureHint" class="gesture-hint">拖动旋转 · 双指缩放 · 每层分前后两排</p>
 
         <button id="foodToggle" class="food-toggle" type="button" aria-controls="foodDrawer" aria-expanded="false">
           <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 11h18l-2 14H9L7 11Zm4-5 5 5 5-5"/></svg>
@@ -39,7 +39,7 @@
         <section id="inventoryDock" class="inventory-dock" aria-label="冰箱容量">
           <button id="inventoryToggle" class="inventory-summary" type="button" aria-controls="inventoryDrawer" aria-expanded="false">
             <span class="inventory-summary__title">冰箱内容</span>
-            <span id="inventoryCount" class="inventory-summary__count">0 / 29</span>
+            <span id="inventoryCount" class="inventory-summary__count">0 / 52</span>
             <span class="inventory-summary__chevron">⌃</span>
           </button>
           <div id="zoneMeters" class="zone-meters"></div>
@@ -50,13 +50,13 @@
           <div class="drawer-header">
             <div>
               <h2>添加食材</h2>
-              <p>系统会自动分配到合适且空闲的位置</p>
+              <p>每层会自动分配到后排或前排的空位</p>
             </div>
             <button id="foodDrawerClose" class="icon-button icon-button--plain" type="button" aria-label="关闭食材面板">×</button>
           </div>
           <label class="search-field">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>
-            <input id="foodSearch" type="search" placeholder="搜索牛肉、鸡蛋、可乐……" autocomplete="off" />
+            <input id="foodSearch" type="search" placeholder="搜索鸡蛋、西红柿、牛肉、果汁……" autocomplete="off" />
           </label>
           <div id="categoryTabs" class="category-tabs" role="tablist" aria-label="食材分类"></div>
           <div id="foodGrid" class="food-grid"></div>
@@ -67,7 +67,7 @@
           <div class="drawer-header">
             <div>
               <h2>冰箱内容</h2>
-              <p>可以逐件移除，空槽会自动重新利用</p>
+              <p>逐件移除后，前后排空位会自动重新利用</p>
             </div>
             <button id="inventoryDrawerClose" class="icon-button icon-button--plain" type="button" aria-label="关闭库存面板">×</button>
           </div>
@@ -94,10 +94,10 @@
           <button class="icon-button icon-button--plain modal-sheet__close" data-close-modal type="button" aria-label="关闭">×</button>
           <h2>如何使用</h2>
           <div class="help-grid">
-            <article><b>拖动</b><span>旋转查看冰箱侧面和柜门内侧</span></article>
+            <article><b>拖动</b><span>旋转查看冰箱深处、侧面和柜门内侧</span></article>
             <article><b>双指或滚轮</b><span>平滑放大和缩小冰箱</span></article>
-            <article><b>轻点柜门</b><span>分别打开冷藏区和冷冻区</span></article>
-            <article><b>轻点食物</b><span>查看位置并单独移除</span></article>
+            <article><b>前后两排</b><span>同一层先放后排，再放前排；旋转后可以看清深处</span></article>
+            <article><b>轻点食物</b><span>查看所在层与前后排，并可单独移除</span></article>
           </div>
         </div>
       </section>
