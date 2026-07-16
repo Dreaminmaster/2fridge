@@ -97,11 +97,22 @@ export function createFoodModel(food, inventoryItem) {
       break;
     case 'sausage':
       for (let index = 0; index < 3; index += 1) {
-        const sausage = new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.6, 4, 8), index % 2 ? b : a);
-        sausage.rotation.z = Math.PI / 2;
+        // CapsuleGeometry is not available on every Three.js build. Compose the
+        // sausage from core geometries so every catalogue item renders reliably.
+        const material = index % 2 ? b : a;
+        const sausage = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.6, 8), material);
+        body.rotation.z = Math.PI / 2;
+        sausage.add(body);
+        const leftCap = new THREE.Mesh(new THREE.SphereGeometry(0.13, 7, 5), material);
+        leftCap.position.x = -0.3;
+        const rightCap = leftCap.clone();
+        rightCap.position.x = 0.3;
+        sausage.add(leftCap, rightCap);
         sausage.position.y = (index - 1) * 0.22;
         sausage.position.x = index % 2 ? 0.08 : -0.08;
-        add(sausage);
+        sausage.traverse((child) => { if (child.isMesh) child.userData.foodRoot = group; });
+        group.add(sausage);
       }
       break;
     case 'dumpling':
