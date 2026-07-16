@@ -1,4 +1,5 @@
 import { FOOD_CATALOG, FOOD_CATEGORIES, ZONE_META, getFoodById } from '../data/foodCatalog.js';
+import { SLOT_LAYOUT } from '../scene/fridgeLayout.js';
 import { foodIconSvg } from './foodIcon.js';
 
 export function createUIController({ store, scene }) {
@@ -108,7 +109,9 @@ export function createUIController({ store, scene }) {
     const result = store.add(food);
     if (!result.ok) { showToast(`${ZONE_META[result.zone].label}已经放满了`); return; }
     scene.openForZone(food.target);
-    showToast(`${food.name}已放入${ZONE_META[food.target].label}`);
+    const slot = SLOT_LAYOUT[result.item.zone][result.item.slot];
+    const depthCopy = slot?.depthLabel && slot.depthLabel !== '门架' ? ` · ${slot.depthLabel}` : '';
+    showToast(`${food.name}已放入${ZONE_META[food.target].label}${depthCopy}`);
   }
 
   function selectItem(instanceId) {
@@ -116,9 +119,12 @@ export function createUIController({ store, scene }) {
     if (!item) return;
     selectedInstanceId = instanceId;
     const food = getFoodById(item.foodId);
+    const slot = SLOT_LAYOUT[item.zone]?.[item.slot];
+    const shelfCopy = slot?.shelf != null ? `第 ${slot.shelf + 1} 层` : `第 ${item.slot + 1} 个位置`;
+    const depthCopy = slot?.depthLabel ? ` · ${slot.depthLabel}` : '';
     elements.itemSheetIcon.innerHTML = foodIconSvg(food);
     elements.itemSheetName.textContent = food.name;
-    elements.itemSheetMeta.textContent = `${ZONE_META[item.zone].label} · 第 ${item.slot + 1} 个位置`;
+    elements.itemSheetMeta.textContent = `${ZONE_META[item.zone].label} · ${shelfCopy}${depthCopy}`;
     elements.itemSheet.classList.add('open');
     elements.itemSheet.setAttribute('aria-hidden', 'false');
   }
