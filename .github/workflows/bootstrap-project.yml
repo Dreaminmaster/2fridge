@@ -7,9 +7,6 @@ on:
       - DEPLOYMENT_STATUS.md
       - BUILD_STATUS.md
       - TEST_FAILURE.md
-  pull_request_target:
-    branches: [main]
-    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 permissions:
@@ -27,8 +24,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -41,7 +36,7 @@ jobs:
           set -o pipefail
           npm test 2>&1 | tee /tmp/pocket-fridge-test.log
       - name: Record validation failure
-        if: failure() && github.event_name != 'pull_request_target'
+        if: failure()
         shell: bash
         run: |
           {
@@ -87,12 +82,10 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
       - name: Checkout latest main
-        if: github.event_name != 'pull_request_target'
         uses: actions/checkout@v4
         with:
           ref: main
       - name: Record successful deployment
-        if: github.event_name != 'pull_request_target'
         shell: bash
         run: |
           cat > DEPLOYMENT_STATUS.md <<STATUS
@@ -113,7 +106,7 @@ jobs:
           git push origin HEAD:main
 
   diagnostics:
-    if: always() && github.event_name != 'pull_request_target'
+    if: always()
     needs: [build, deploy]
     runs-on: ubuntu-latest
     steps:
