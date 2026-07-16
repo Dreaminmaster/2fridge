@@ -3,16 +3,18 @@ export const SLOT_LAYOUT = {
     rows: [3.34, 2.16, 0.98],
     cols: [-1.42, -0.47, 0.48, 1.43],
     layers: [
-      { id: 'back', label: '后排', z: -0.92, xOffset: 0.14, yOffset: 0.08, scale: 0.60 },
-      { id: 'front', label: '前排', z: 0.58, xOffset: -0.04, yOffset: 0, scale: 0.65 },
+      // Fill the visible front row first. The back row remains raised and offset,
+      // so it is still readable once a shelf contains more than four items.
+      { id: 'front', label: '前排', z: 0.76, xOffset: -0.05, yOffset: 0, scale: 0.70 },
+      { id: 'back', label: '后排', z: -0.50, xOffset: 0.13, yOffset: 0.16, scale: 0.67 },
     ],
   }),
   freezer: buildLayeredShelves({
     rows: [-1.72, -2.66],
     cols: [-1.42, -0.47, 0.48, 1.43],
     layers: [
-      { id: 'back', label: '后排', z: -0.90, xOffset: 0.14, yOffset: 0.08, scale: 0.60 },
-      { id: 'front', label: '前排', z: 0.58, xOffset: -0.04, yOffset: 0, scale: 0.65 },
+      { id: 'front', label: '前排', z: 0.76, xOffset: -0.05, yOffset: 0, scale: 0.70 },
+      { id: 'back', label: '后排', z: -0.50, xOffset: 0.13, yOffset: 0.16, scale: 0.67 },
     ],
   }),
   door: buildDoorGrid({
