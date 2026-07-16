@@ -57,13 +57,10 @@
 }
 
 @media (max-width: 759px) {
+  /* Touch already provides rotation and pinch zoom. Keeping these three
+     controls only covers the fridge and increases interface clutter. */
   .camera-controls {
-    gap: 7px;
-  }
-
-  .control-button {
-    width: 38px;
-    height: 38px;
+    display: none;
   }
 
   .inventory-dock {
