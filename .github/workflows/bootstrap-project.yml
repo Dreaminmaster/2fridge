@@ -1,5 +1,6 @@
 name: Build and Deploy Pocket Fridge
 
+# Explicitly retained as the single production validation and Pages workflow.
 on:
   push:
     branches: [main]
