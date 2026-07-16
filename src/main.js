@@ -1,4 +1,5 @@
 import './style.css';
+import './mobile-performance.css';
 import { FOOD_CATALOG } from './data/foodCatalog.js';
 import { createInventoryStore } from './domain/inventoryStore.js';
 import { buildRecipeContext } from './domain/recipeContext.js';
