@@ -47,7 +47,13 @@ jobs:
             echo "- Recorded at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
             echo
             echo '```text'
-            tail -n 220 /tmp/pocket-fridge-test.log
+            awk '
+              /^not ok / { capture=1; remaining=38 }
+              capture { print; remaining -= 1; if (remaining <= 0) capture=0 }
+            ' /tmp/pocket-fridge-test.log
+            echo
+            echo '--- test totals ---'
+            tail -n 14 /tmp/pocket-fridge-test.log
             echo '```'
           } > TEST_FAILURE.md
           git config user.name "github-actions[bot]"
