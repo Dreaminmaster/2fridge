@@ -12,6 +12,8 @@ assert.ok(SLOT_LAYOUT.fridge.some((slot) => slot.depth === 'front'));
 assert.ok(SLOT_LAYOUT.fridge.some((slot) => slot.depth === 'back'));
 assert.ok(SLOT_LAYOUT.freezer.some((slot) => slot.depth === 'front'));
 assert.ok(SLOT_LAYOUT.freezer.some((slot) => slot.depth === 'back'));
+assert.ok(SLOT_LAYOUT.fridge.slice(0, 4).every((slot) => slot.depth === 'front'), '冷藏必须前排优先');
+assert.ok(SLOT_LAYOUT.freezer.slice(0, 4).every((slot) => slot.depth === 'front'), '冷冻必须前排优先');
 
 const files = await Promise.all([
   'src/domain/inventoryStore.js',
@@ -21,6 +23,8 @@ const files = await Promise.all([
   'src/scene/createFoodModel.js',
   'src/ui/uiController.js',
   'src/style.css',
+  'src/mobile-performance.css',
+  'src/main.js',
   'README.md',
 ].map((path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8')));
 
@@ -28,9 +32,16 @@ assert.ok(files[0].includes('zone-full'));
 assert.ok(files[1].includes('availableIngredientKeys'));
 assert.ok(files[2].includes('OrbitControls'));
 assert.ok(files[2].includes('targetScale'));
+assert.ok(files[2].includes('pixelRatioCap: lowPower ? 1'));
+assert.ok(files[2].includes('shadowMap.autoUpdate = false'));
+assert.ok(files[2].includes('revealItem'));
 assert.ok(files[3].includes('genuinely deep cabinet'));
 assert.ok(files[4].includes('depthLabel'));
 assert.ok(files[5].includes('removeOne'));
+assert.ok(files[5].includes('scene.revealItem'));
+assert.ok(files[5].includes('findFirstFreeSlot'));
 assert.ok(!files[6].includes('statusText'));
-assert.ok(files[7].includes('https://dreaminmaster.github.io/2fridge/'));
-console.log(`Project validation passed: ${FOOD_CATALOG.length} foods, 52 slots, front/back depth layers.`);
+assert.ok(files[7].includes('backdrop-filter: none'));
+assert.ok(files[8].includes("import './mobile-performance.css'"));
+assert.ok(files[9].includes('https://dreaminmaster.github.io/2fridge/'));
+console.log(`Project validation passed: ${FOOD_CATALOG.length} foods, 52 slots, front-first visibility, mobile performance profile.`);
