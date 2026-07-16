@@ -6,19 +6,17 @@ import { createFridge } from './createFridge.js';
 import { createFoodModel } from './createFoodModel.js';
 
 export function createSceneController({ canvas, stage, onDoorChange, onFoodSelect, onUserNavigate }) {
-  const performanceProfile = getPerformanceProfile();
+  const profile = getRenderProfile();
   const renderer = new THREE.WebGLRenderer({
     canvas,
-    antialias: !performanceProfile.lowPower,
+    antialias: true,
     alpha: true,
     powerPreference: 'high-performance',
-    precision: performanceProfile.lowPower ? 'mediump' : 'highp',
+    precision: 'highp',
   });
-  renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio ?? 1, performanceProfile.pixelRatioCap));
+  renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio ?? 1, profile.pixelRatioCap));
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = performanceProfile.shadowType;
-  // The light and objects do not change during camera orbiting, so rebuilding the
-  // shadow map on every touch frame is wasted work on mobile Safari.
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.shadowMap.autoUpdate = false;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -29,23 +27,22 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
   scene.fog = new THREE.Fog('#efcf98', 13, 30);
   const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
   const controls = new OrbitControls(camera, canvas);
-  controls.enableDamping = true;
-  controls.dampingFactor = performanceProfile.lowPower ? 0.14 : 0.075;
+  controls.enableDamping = !profile.mobile;
+  controls.dampingFactor = 0.075;
   controls.enablePan = false;
   controls.minDistance = 10.5;
   controls.maxDistance = 26;
   controls.minPolarAngle = Math.PI * 0.24;
   controls.maxPolarAngle = Math.PI * 0.68;
-  controls.rotateSpeed = performanceProfile.lowPower ? 0.86 : 0.62;
-  controls.zoomSpeed = performanceProfile.lowPower ? 0.9 : 0.75;
+  controls.rotateSpeed = profile.mobile ? 0.78 : 0.62;
+  controls.zoomSpeed = profile.mobile ? 0.9 : 0.75;
   controls.touches.ONE = THREE.TOUCH.ROTATE;
   controls.touches.TWO = THREE.TOUCH.DOLLY_ROTATE;
 
-  setupLights(scene, performanceProfile);
+  setupLights(scene, profile);
   createRoom(scene);
   const fridge = createFridge(createMaterials());
   scene.add(fridge.group);
-  renderer.shadowMap.needsUpdate = true;
 
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
@@ -57,11 +54,28 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
   let baseScale = 0.82;
   let baseX = -0.45;
   let initialView = null;
+  let layoutSignature = '';
   let attention = null;
+  let frameId = 0;
+  let controlsActive = false;
+  let settleFrames = 0;
+  let shadowDirty = true;
+  let cabinetWasMoving = false;
 
-  controls.addEventListener('start', () => onUserNavigate?.());
-  controls.addEventListener('end', () => { renderer.shadowMap.needsUpdate = true; });
-  canvas.addEventListener('pointerdown', (event) => { pointerStart = { x: event.clientX, y: event.clientY }; });
+  controls.addEventListener('change', () => invalidate(1));
+  controls.addEventListener('start', () => {
+    controlsActive = true;
+    onUserNavigate?.();
+    invalidate(1);
+  });
+  controls.addEventListener('end', () => {
+    controlsActive = false;
+    settleFrames = profile.mobile ? 0 : 20;
+    invalidate(settleFrames || 1);
+  });
+  canvas.addEventListener('pointerdown', (event) => {
+    pointerStart = { x: event.clientX, y: event.clientY };
+  });
   canvas.addEventListener('pointerup', handleTap);
   canvas.addEventListener('pointercancel', () => { pointerStart = null; });
   globalThis.addEventListener('resize', resize, { passive: true });
@@ -87,36 +101,55 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
     if (!doorHit) return;
     const key = doorHit.object.userData.doorName === 'upper-door' ? 'upper' : 'lower';
     doorState[key] = !doorState[key];
-    renderer.shadowMap.needsUpdate = true;
     onDoorChange?.({ ...doorState });
+    invalidate(45);
+  }
+
+  function buildFoodMesh(food, item) {
+    const mesh = createFoodModel(food, item);
+    mesh.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = false;
+        child.receiveShadow = false;
+      }
+    });
+    return mesh;
+  }
+
+  function stageItem(food, item, { animate = true } = {}) {
+    if (foodMeshes.has(item.instanceId)) return { ok: true, mesh: foodMeshes.get(item.instanceId) };
+    try {
+      const mesh = buildFoodMesh(food, item);
+      fridge.foodRoots[item.zone].add(mesh);
+      foodMeshes.set(item.instanceId, mesh);
+      if (animate) animations.push({ mesh, age: 0 });
+      else mesh.scale.setScalar(mesh.userData.targetScale ?? 1);
+      invalidate(animate ? 30 : 1);
+      return { ok: true, mesh };
+    } catch (error) {
+      console.error(`Unable to render food ${food?.id ?? item.foodId}:`, error);
+      return { ok: false, error };
+    }
   }
 
   function syncInventory(items, catalogById) {
+    const failures = [];
     const liveIds = new Set(items.map((item) => item.instanceId));
     foodMeshes.forEach((mesh, id) => {
-      if (!liveIds.has(id)) {
-        if (attention?.instanceId === id) clearAttention();
-        mesh.parent?.remove(mesh);
-        disposeObject(mesh);
-        foodMeshes.delete(id);
-      }
+      if (!liveIds.has(id)) removeItem(id);
     });
     items.forEach((item) => {
       if (foodMeshes.has(item.instanceId)) return;
       const food = catalogById.get(item.foodId);
-      if (!food) return;
-      const mesh = createFoodModel(food, item);
-      // Dozens of small food shadows are expensive and visually unnecessary.
-      mesh.traverse((child) => {
-        if (child.isMesh) {
-          child.castShadow = false;
-          child.receiveShadow = false;
-        }
-      });
-      fridge.foodRoots[item.zone].add(mesh);
-      foodMeshes.set(item.instanceId, mesh);
-      animations.push({ mesh, age: 0 });
+      if (!food) {
+        failures.push(item.instanceId);
+        return;
+      }
+      const result = stageItem(food, item, { animate: false });
+      if (!result.ok) failures.push(item.instanceId);
     });
+    invalidate(1);
+    return failures;
   }
 
   function removeItem(instanceId) {
@@ -126,13 +159,14 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
     mesh.parent?.remove(mesh);
     disposeObject(mesh);
     foodMeshes.delete(instanceId);
+    invalidate(1);
   }
 
   function openForZone(zone) {
     if (zone === 'freezer') doorState.lower = true;
     else doorState.upper = true;
-    renderer.shadowMap.needsUpdate = true;
     onDoorChange?.({ ...doorState });
+    invalidate(45);
   }
 
   function revealItem(instanceId, zone) {
@@ -155,6 +189,7 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
       marker.renderOrder = 999;
       mesh.add(marker);
       attention = { instanceId, mesh, marker, age: 0 };
+      invalidate(120);
     };
     if (foodMeshes.has(instanceId)) reveal();
     else requestAnimationFrame(reveal);
@@ -174,6 +209,7 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
     camera.position.copy(controls.target).add(direction.multiplyScalar(nextDistance));
     controls.update();
     onUserNavigate?.();
+    invalidate(profile.mobile ? 1 : 15);
   }
 
   function resetView() {
@@ -181,66 +217,81 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
     camera.position.copy(initialView.position);
     controls.target.copy(initialView.target);
     controls.update();
+    invalidate(profile.mobile ? 1 : 15);
   }
 
   function resize() {
-    const width = stage.clientWidth;
-    const height = stage.clientHeight;
-    renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio ?? 1, performanceProfile.pixelRatioCap));
+    const width = Math.max(1, stage.clientWidth);
+    const height = Math.max(1, stage.clientHeight);
+    renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio ?? 1, profile.pixelRatioCap));
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     const portrait = height > width * 1.08;
-    if (portrait) {
-      baseScale = width < 390 ? 0.70 : 0.76;
-      baseX = -0.48;
-      camera.fov = width < 390 ? 43 : 40;
-      camera.position.set(8.2, 3.25, 18.9);
-      controls.target.set(-0.12, 0.12, -0.1);
-    } else {
-      baseScale = width < 1000 ? 0.86 : 0.94;
-      baseX = -0.68;
-      camera.fov = 34;
-      camera.position.set(11.1, 2.8, 17.8);
-      controls.target.set(-0.3, 0.08, -0.18);
+    const signature = `${portrait ? 'portrait' : 'landscape'}-${width < 390 ? 'small' : width < 760 ? 'medium' : 'wide'}`;
+
+    // Safari changes viewport height as its address bar moves. Do not reset the
+    // camera for those height-only resizes; preserve the user's current orbit.
+    if (!initialView || signature !== layoutSignature) {
+      layoutSignature = signature;
+      if (portrait) {
+        baseScale = width < 390 ? 0.76 : 0.81;
+        baseX = -0.38;
+        camera.fov = width < 390 ? 42 : 39;
+        camera.position.set(8.4, 2.85, 17.5);
+        controls.target.set(-0.1, 0.05, -0.08);
+      } else {
+        baseScale = width < 1000 ? 0.88 : 0.96;
+        baseX = -0.62;
+        camera.fov = 34;
+        camera.position.set(11.1, 2.8, 17.8);
+        controls.target.set(-0.3, 0.08, -0.18);
+      }
+      initialView = { position: camera.position.clone(), target: controls.target.clone() };
+      fridge.group.scale.setScalar(baseScale);
+      fridge.group.position.x = baseX;
+      controls.update();
     }
-    initialView = { position: camera.position.clone(), target: controls.target.clone() };
-    fridge.group.scale.setScalar(baseScale);
-    fridge.group.position.x = baseX;
+
     camera.updateProjectionMatrix();
-    controls.update();
-    renderer.shadowMap.needsUpdate = true;
+    shadowDirty = true;
+    invalidate(1);
   }
 
-  function render() {
+  function invalidate(extraFrames = 0) {
+    settleFrames = Math.max(settleFrames, extraFrames);
+    if (frameId) return;
+    frameId = requestAnimationFrame(renderFrame);
+  }
+
+  function renderFrame() {
+    frameId = 0;
     const delta = Math.min(clock.getDelta(), 0.05);
     const upperTarget = doorState.upper ? 1.92 : 0;
     const lowerTarget = doorState.lower ? 1.82 : 0;
-    const previousUpper = fridge.doors.upper.pivot.rotation.y;
-    const previousLower = fridge.doors.lower.pivot.rotation.y;
-    fridge.doors.upper.pivot.rotation.y = damp(previousUpper, upperTarget, 7.5, delta);
-    fridge.doors.lower.pivot.rotation.y = damp(previousLower, lowerTarget, 7.5, delta);
     const anyOpen = doorState.upper || doorState.lower;
-    const desiredX = baseX + (anyOpen ? -0.92 : 0);
-    const desiredScale = baseScale * (anyOpen ? 0.88 : 1);
-    const previousX = fridge.group.position.x;
-    const previousScale = fridge.group.scale.x;
-    fridge.group.position.x = damp(previousX, desiredX, 5.5, delta);
-    const nextScale = damp(previousScale, desiredScale, 5.5, delta);
+    const desiredX = baseX + (anyOpen ? -0.72 : 0);
+    const desiredScale = baseScale * (anyOpen ? 0.94 : 1);
+
+    fridge.doors.upper.pivot.rotation.y = damp(fridge.doors.upper.pivot.rotation.y, upperTarget, 8.5, delta);
+    fridge.doors.lower.pivot.rotation.y = damp(fridge.doors.lower.pivot.rotation.y, lowerTarget, 8.5, delta);
+    fridge.group.position.x = damp(fridge.group.position.x, desiredX, 6.5, delta);
+    const nextScale = damp(fridge.group.scale.x, desiredScale, 6.5, delta);
     fridge.group.scale.setScalar(nextScale);
 
-    const cabinetMoving = Math.abs(previousUpper - upperTarget) > 0.001
-      || Math.abs(previousLower - lowerTarget) > 0.001
-      || Math.abs(previousX - desiredX) > 0.001
-      || Math.abs(previousScale - desiredScale) > 0.001;
-    if (cabinetMoving) renderer.shadowMap.needsUpdate = true;
+    const cabinetMoving = !near(fridge.doors.upper.pivot.rotation.y, upperTarget)
+      || !near(fridge.doors.lower.pivot.rotation.y, lowerTarget)
+      || !near(fridge.group.position.x, desiredX)
+      || !near(fridge.group.scale.x, desiredScale);
+    if (!cabinetMoving && cabinetWasMoving) shadowDirty = true;
+    cabinetWasMoving = cabinetMoving;
 
     for (let index = animations.length - 1; index >= 0; index -= 1) {
       const animation = animations[index];
       animation.age += delta;
-      const t = Math.min(animation.age / 0.42, 1);
+      const t = Math.min(animation.age / 0.38, 1);
       const eased = 1 - (1 - t) ** 3;
       const itemScale = animation.mesh.userData.targetScale ?? 1;
-      animation.mesh.scale.setScalar(Math.max(0.001, eased * (1 + Math.sin(t * Math.PI) * 0.14) * itemScale));
+      animation.mesh.scale.setScalar(Math.max(0.001, eased * (1 + Math.sin(t * Math.PI) * 0.12) * itemScale));
       if (t >= 1) {
         animation.mesh.scale.setScalar(itemScale);
         animations.splice(index, 1);
@@ -257,15 +308,28 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
       if (attention.age >= 1.9) clearAttention();
     }
 
-    controls.update();
+    const controlsChanged = controls.update();
+    if (shadowDirty) {
+      renderer.shadowMap.needsUpdate = true;
+      shadowDirty = false;
+    }
     renderer.render(scene, camera);
+
+    if (settleFrames > 0) settleFrames -= 1;
+    const needsAnotherFrame = controlsActive
+      || cabinetMoving
+      || animations.length > 0
+      || Boolean(attention)
+      || settleFrames > 0
+      || (!profile.mobile && Boolean(controlsChanged));
+    if (needsAnotherFrame) invalidate();
   }
 
   resize();
-  renderer.setAnimationLoop(render);
 
   return {
     syncInventory,
+    stageItem,
     removeItem,
     openForZone,
     revealItem,
@@ -276,24 +340,24 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
   };
 }
 
-function getPerformanceProfile() {
+function getRenderProfile() {
   const coarsePointer = typeof globalThis.matchMedia === 'function' && globalThis.matchMedia('(pointer: coarse)').matches;
   const narrowViewport = (globalThis.innerWidth ?? 1024) < 760;
-  const lowPower = coarsePointer || narrowViewport;
   return {
-    lowPower,
-    pixelRatioCap: lowPower ? 1 : 1.55,
-    shadowType: lowPower ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap,
-    shadowMapSize: lowPower ? 512 : 1536,
+    mobile: coarsePointer || narrowViewport,
+    // Preserve crisp Retina rendering. Performance now comes from on-demand
+    // frames and cached shadows rather than reducing visual resolution.
+    pixelRatioCap: coarsePointer || narrowViewport ? 1.8 : 2,
+    shadowMapSize: 1536,
   };
 }
 
-function setupLights(scene, performanceProfile) {
+function setupLights(scene, profile) {
   scene.add(new THREE.HemisphereLight('#fff6da', '#8d603d', 2.3));
   const key = new THREE.DirectionalLight('#fff1ce', 3.2);
   key.position.set(-4, 8, 6);
   key.castShadow = true;
-  key.shadow.mapSize.set(performanceProfile.shadowMapSize, performanceProfile.shadowMapSize);
+  key.shadow.mapSize.set(profile.shadowMapSize, profile.shadowMapSize);
   key.shadow.camera.left = -7;
   key.shadow.camera.right = 7;
   key.shadow.camera.top = 9;
@@ -317,6 +381,10 @@ function disposeObject(object) {
     if (Array.isArray(child.material)) child.material.forEach((material) => material.dispose?.());
     else child.material?.dispose?.();
   });
+}
+
+function near(value, target, epsilon = 0.0015) {
+  return Math.abs(value - target) <= epsilon;
 }
 
 function damp(current, target, lambda, delta) {
