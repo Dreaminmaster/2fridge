@@ -28,20 +28,25 @@ const files = await Promise.all([
   'README.md',
 ].map((path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8')));
 
-assert.ok(files[0].includes('zone-full'));
+assert.ok(files[0].includes('prepareAdd'));
+assert.ok(files[0].includes('commitPrepared'));
+assert.ok(files[0].includes('pocket-fridge-v3'));
 assert.ok(files[1].includes('availableIngredientKeys'));
 assert.ok(files[2].includes('OrbitControls'));
-assert.ok(files[2].includes('targetScale'));
-assert.ok(files[2].includes('pixelRatioCap: lowPower ? 1'));
+assert.ok(files[2].includes('requestAnimationFrame(renderFrame)'));
+assert.ok(!files[2].includes('setAnimationLoop'));
+assert.ok(files[2].includes('pixelRatioCap: coarsePointer || narrowViewport ? 1.8 : 2'));
 assert.ok(files[2].includes('shadowMap.autoUpdate = false'));
-assert.ok(files[2].includes('revealItem'));
+assert.ok(files[2].includes('stageItem'));
 assert.ok(files[3].includes('genuinely deep cabinet'));
 assert.ok(files[4].includes('depthLabel'));
-assert.ok(files[5].includes('removeOne'));
-assert.ok(files[5].includes('scene.revealItem'));
-assert.ok(files[5].includes('findFirstFreeSlot'));
+assert.ok(!files[4].includes('THREE.CapsuleGeometry'));
+assert.ok(files[5].includes('store.prepareAdd'));
+assert.ok(files[5].includes('store.commitPrepared'));
+assert.ok(files[5].includes('scene.stageItem'));
 assert.ok(!files[6].includes('statusText'));
-assert.ok(files[7].includes('backdrop-filter: none'));
+assert.ok(files[7].includes('.camera-controls'));
+assert.ok(files[7].includes('display: none'));
 assert.ok(files[8].includes("import './mobile-performance.css'"));
 assert.ok(files[9].includes('https://dreaminmaster.github.io/2fridge/'));
-console.log(`Project validation passed: ${FOOD_CATALOG.length} foods, 52 slots, front-first visibility, mobile performance profile.`);
+console.log(`Project validation passed: ${FOOD_CATALOG.length} foods, transactional inventory, full-quality on-demand mobile rendering.`);
