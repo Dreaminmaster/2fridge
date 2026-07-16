@@ -16,14 +16,14 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#efcf98');
-  scene.fog = new THREE.Fog('#efcf98', 12, 28);
+  scene.fog = new THREE.Fog('#efcf98', 13, 30);
   const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
   const controls = new OrbitControls(camera, canvas);
   controls.enableDamping = true;
   controls.dampingFactor = 0.075;
   controls.enablePan = false;
-  controls.minDistance = 10;
-  controls.maxDistance = 24;
+  controls.minDistance = 10.5;
+  controls.maxDistance = 26;
   controls.minPolarAngle = Math.PI * 0.24;
   controls.maxPolarAngle = Math.PI * 0.68;
   controls.rotateSpeed = 0.62;
@@ -78,7 +78,11 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
   function syncInventory(items, catalogById) {
     const liveIds = new Set(items.map((item) => item.instanceId));
     foodMeshes.forEach((mesh, id) => {
-      if (!liveIds.has(id)) { mesh.parent?.remove(mesh); disposeObject(mesh); foodMeshes.delete(id); }
+      if (!liveIds.has(id)) {
+        mesh.parent?.remove(mesh);
+        disposeObject(mesh);
+        foodMeshes.delete(id);
+      }
     });
     items.forEach((item) => {
       if (foodMeshes.has(item.instanceId)) return;
@@ -127,17 +131,17 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
     camera.aspect = width / height;
     const portrait = height > width * 1.08;
     if (portrait) {
-      baseScale = width < 390 ? 0.73 : 0.79;
-      baseX = -0.42;
-      camera.fov = width < 390 ? 42 : 39;
-      camera.position.set(8.8, 3.25, 17.4);
-      controls.target.set(-0.15, 0.15, 0);
+      baseScale = width < 390 ? 0.70 : 0.76;
+      baseX = -0.48;
+      camera.fov = width < 390 ? 43 : 40;
+      camera.position.set(9.3, 3.35, 18.6);
+      controls.target.set(-0.12, 0.12, -0.18);
     } else {
-      baseScale = width < 1000 ? 0.9 : 0.98;
-      baseX = -0.65;
-      camera.fov = 33;
-      camera.position.set(10.4, 2.65, 16.4);
-      controls.target.set(-0.35, 0.1, 0);
+      baseScale = width < 1000 ? 0.86 : 0.94;
+      baseX = -0.68;
+      camera.fov = 34;
+      camera.position.set(11.1, 2.8, 17.8);
+      controls.target.set(-0.3, 0.08, -0.18);
     }
     initialView = { position: camera.position.clone(), target: controls.target.clone() };
     fridge.group.scale.setScalar(baseScale);
@@ -151,8 +155,8 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
     fridge.doors.upper.pivot.rotation.y = damp(fridge.doors.upper.pivot.rotation.y, doorState.upper ? 1.92 : 0, 7.5, delta);
     fridge.doors.lower.pivot.rotation.y = damp(fridge.doors.lower.pivot.rotation.y, doorState.lower ? 1.82 : 0, 7.5, delta);
     const anyOpen = doorState.upper || doorState.lower;
-    fridge.group.position.x = damp(fridge.group.position.x, baseX + (anyOpen ? -0.9 : 0), 5.5, delta);
-    const targetScale = baseScale * (anyOpen ? 0.9 : 1);
+    fridge.group.position.x = damp(fridge.group.position.x, baseX + (anyOpen ? -0.92 : 0), 5.5, delta);
+    const targetScale = baseScale * (anyOpen ? 0.88 : 1);
     const nextScale = damp(fridge.group.scale.x, targetScale, 5.5, delta);
     fridge.group.scale.setScalar(nextScale);
 
@@ -161,8 +165,12 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
       animation.age += delta;
       const t = Math.min(animation.age / 0.42, 1);
       const eased = 1 - (1 - t) ** 3;
-      animation.mesh.scale.setScalar(Math.max(0.001, eased * (1 + Math.sin(t * Math.PI) * 0.14)));
-      if (t >= 1) { animation.mesh.scale.setScalar(1); animations.splice(index, 1); }
+      const itemScale = animation.mesh.userData.targetScale ?? 1;
+      animation.mesh.scale.setScalar(Math.max(0.001, eased * (1 + Math.sin(t * Math.PI) * 0.14) * itemScale));
+      if (t >= 1) {
+        animation.mesh.scale.setScalar(itemScale);
+        animations.splice(index, 1);
+      }
     }
     controls.update();
     renderer.render(scene, camera);
@@ -171,13 +179,32 @@ export function createSceneController({ canvas, stage, onDoorChange, onFoodSelec
   resize();
   renderer.setAnimationLoop(render);
 
-  return { syncInventory, removeItem, openForZone, zoomIn: () => zoomBy(-1.7), zoomOut: () => zoomBy(1.7), resetView, getDoorState: () => ({ ...doorState }) };
+  return {
+    syncInventory,
+    removeItem,
+    openForZone,
+    zoomIn: () => zoomBy(-1.7),
+    zoomOut: () => zoomBy(1.7),
+    resetView,
+    getDoorState: () => ({ ...doorState }),
+  };
 }
 
 function setupLights(scene) {
   scene.add(new THREE.HemisphereLight('#fff6da', '#8d603d', 2.3));
-  const key = new THREE.DirectionalLight('#fff1ce', 3.2); key.position.set(-4, 8, 6); key.castShadow = true; key.shadow.mapSize.set(1536, 1536); key.shadow.camera.left = -7; key.shadow.camera.right = 7; key.shadow.camera.top = 9; key.shadow.camera.bottom = -5; key.shadow.bias = -0.0003; scene.add(key);
-  const fill = new THREE.PointLight('#ffdca7', 1.2, 14); fill.position.set(4, 3, 4); scene.add(fill);
+  const key = new THREE.DirectionalLight('#fff1ce', 3.2);
+  key.position.set(-4, 8, 6);
+  key.castShadow = true;
+  key.shadow.mapSize.set(1536, 1536);
+  key.shadow.camera.left = -7;
+  key.shadow.camera.right = 7;
+  key.shadow.camera.top = 9;
+  key.shadow.camera.bottom = -5;
+  key.shadow.bias = -0.0003;
+  scene.add(key);
+  const fill = new THREE.PointLight('#ffdca7', 1.2, 16);
+  fill.position.set(4, 3, 5);
+  scene.add(fill);
 }
 
 function findFoodRoot(object) {
@@ -187,7 +214,11 @@ function findFoodRoot(object) {
 }
 
 function disposeObject(object) {
-  object.traverse((child) => { child.geometry?.dispose?.(); if (Array.isArray(child.material)) child.material.forEach((material) => material.dispose?.()); else child.material?.dispose?.(); });
+  object.traverse((child) => {
+    child.geometry?.dispose?.();
+    if (Array.isArray(child.material)) child.material.forEach((material) => material.dispose?.());
+    else child.material?.dispose?.();
+  });
 }
 
 function damp(current, target, lambda, delta) {
