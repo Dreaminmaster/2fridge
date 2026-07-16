@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { enhanceFoodModel } from './foodDetails.js';
+import { refineFoodModel } from './foodPolish.js';
 
 const EPSILON = 1e-4;
 
@@ -12,6 +13,7 @@ export function prepareFoodPlacement(root, slot) {
   if (!slot) throw new Error('A storage slot is required');
 
   enhanceFoodModel(root);
+  refineFoodModel(root);
   root.position.set(0, 0, 0);
   root.rotation.set(0, 0, 0);
   root.scale.setScalar(1);

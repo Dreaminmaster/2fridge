@@ -1,5 +1,5 @@
 export const ZONE_META = {
-  fridge: { id: 'fridge', label: '冷藏区', shortLabel: '冷藏', capacity: 24 },
+  fridge: { id: 'fridge', label: '冷藏区', shortLabel: '冷藏', capacity: 32 },
   freezer: { id: 'freezer', label: '冷冻区', shortLabel: '冷冻', capacity: 16 },
   door: { id: 'door', label: '柜门内', shortLabel: '门内', capacity: 12 },
 };

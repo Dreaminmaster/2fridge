@@ -6,7 +6,7 @@ import { createFridge } from './createFridge.js';
 import { createFoodModel } from './createFoodModel.js';
 
 const ROOM_FLOOR_Y = -3.32;
-const MOVE_LIMITS = { x: 4.5, z: 2.8 };
+const PAN_LIMITS = { x: 4.6, y: 3.0, z: 2.6 };
 
 export function createSceneController({
   canvas,
@@ -14,7 +14,6 @@ export function createSceneController({
   onDoorChange,
   onFoodSelect,
   onUserNavigate,
-  onMoveModeChange,
 }) {
   const profile = getRenderProfile();
   const renderer = new THREE.WebGLRenderer({
@@ -39,14 +38,20 @@ export function createSceneController({
   const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
   const controls = new OrbitControls(camera, canvas);
   controls.enableDamping = !profile.mobile;
-  controls.dampingFactor = 0.075;
-  controls.enablePan = false;
+  controls.dampingFactor = 0.07;
+  controls.enablePan = !profile.mobile;
+  controls.screenSpacePanning = true;
+  controls.enableZoom = profile.mobile;
   controls.minDistance = 10.5;
   controls.maxDistance = 32;
   controls.minPolarAngle = Math.PI * 0.24;
   controls.maxPolarAngle = Math.PI * 0.68;
   controls.rotateSpeed = profile.mobile ? 0.78 : 0.62;
   controls.zoomSpeed = profile.mobile ? 0.9 : 0.75;
+  controls.panSpeed = 0.78;
+  controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
+  controls.mouseButtons.MIDDLE = THREE.MOUSE.DOLLY;
+  controls.mouseButtons.RIGHT = THREE.MOUSE.PAN;
   controls.touches.ONE = THREE.TOUCH.ROTATE;
   controls.touches.TWO = THREE.TOUCH.DOLLY_ROTATE;
 
@@ -65,10 +70,6 @@ export function createSceneController({
   const doorState = { upper: false, lower: false };
   const clock = new THREE.Clock();
   let pointerStart = null;
-  let movePointer = null;
-  let moveMode = false;
-  let userOffsetX = 0;
-  let userOffsetZ = 0;
   let baseScale = 0.82;
   let baseX = -0.45;
   let initialView = null;
@@ -80,7 +81,10 @@ export function createSceneController({
   let shadowDirty = true;
   let cabinetWasMoving = false;
 
-  controls.addEventListener('change', () => invalidate(1));
+  controls.addEventListener('change', () => {
+    if (!profile.mobile) clampPanTarget();
+    invalidate(1);
+  });
   controls.addEventListener('start', () => {
     controlsActive = true;
     onUserNavigate?.();
@@ -88,66 +92,75 @@ export function createSceneController({
   });
   controls.addEventListener('end', () => {
     controlsActive = false;
-    settleFrames = profile.mobile ? 0 : 20;
+    settleFrames = profile.mobile ? 0 : 12;
     invalidate(settleFrames || 1);
   });
 
   canvas.addEventListener('pointerdown', handlePointerDown);
-  canvas.addEventListener('pointermove', handlePointerMove);
   canvas.addEventListener('pointerup', handlePointerUp);
   canvas.addEventListener('pointercancel', cancelPointer);
-  canvas.addEventListener('contextmenu', (event) => {
-    if (moveMode) event.preventDefault();
-  });
+  if (!profile.mobile) canvas.addEventListener('wheel', handleDesktopWheel, { passive: false });
   globalThis.addEventListener('resize', resize, { passive: true });
 
   function handlePointerDown(event) {
+    if (event.button !== 0) return;
     pointerStart = { x: event.clientX, y: event.clientY };
-    if (!profile.mobile && moveMode && event.button === 0) {
-      movePointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
-      canvas.setPointerCapture?.(event.pointerId);
-      onUserNavigate?.();
-      event.preventDefault();
-    }
-  }
-
-  function handlePointerMove(event) {
-    if (!movePointer || event.pointerId !== movePointer.id) return;
-    const dx = event.clientX - movePointer.x;
-    const dy = event.clientY - movePointer.y;
-    movePointer.x = event.clientX;
-    movePointer.y = event.clientY;
-    const distance = camera.position.distanceTo(controls.target);
-    const worldPerPixel = THREE.MathUtils.clamp(distance * 0.00135, 0.014, 0.035);
-    userOffsetX = THREE.MathUtils.clamp(userOffsetX + dx * worldPerPixel, -MOVE_LIMITS.x, MOVE_LIMITS.x);
-    userOffsetZ = THREE.MathUtils.clamp(userOffsetZ + dy * worldPerPixel * 0.72, -MOVE_LIMITS.z, MOVE_LIMITS.z);
-    shadowDirty = true;
-    invalidate(2);
-    event.preventDefault();
   }
 
   function handlePointerUp(event) {
-    if (movePointer && event.pointerId === movePointer.id) {
-      canvas.releasePointerCapture?.(event.pointerId);
-      movePointer = null;
-      pointerStart = null;
-      shadowDirty = true;
-      invalidate(3);
-      return;
-    }
+    if (event.button !== 0) return;
     handleTap(event);
   }
 
-  function cancelPointer(event) {
-    if (movePointer && event.pointerId === movePointer.id) movePointer = null;
+  function cancelPointer() {
     pointerStart = null;
   }
 
-  function handleTap(event) {
-    if (!pointerStart || moveMode) {
-      pointerStart = null;
+  function handleDesktopWheel(event) {
+    event.preventDefault();
+    onUserNavigate?.();
+    const looksLikePinch = event.ctrlKey;
+    const looksLikeMouseWheel = event.deltaMode !== 0
+      || (Math.abs(event.deltaX) < 1 && Math.abs(event.deltaY) >= 70);
+
+    if (looksLikePinch || looksLikeMouseWheel) {
+      zoomBy(event.deltaY * (looksLikePinch ? 0.032 : 0.018));
       return;
     }
+    panViewByWheel(event.deltaX, event.deltaY);
+  }
+
+  function panViewByWheel(deltaX, deltaY) {
+    if (!initialView) return;
+    camera.updateMatrixWorld();
+    const distance = camera.position.distanceTo(controls.target);
+    const worldPerPixel = THREE.MathUtils.clamp(distance * 0.00115, 0.012, 0.036);
+    const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0).multiplyScalar(-deltaX * worldPerPixel);
+    const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1).multiplyScalar(deltaY * worldPerPixel);
+    const offset = right.add(up);
+    camera.position.add(offset);
+    controls.target.add(offset);
+    clampPanTarget();
+    controls.update();
+    invalidate(2);
+  }
+
+  function clampPanTarget() {
+    if (!initialView) return;
+    const base = initialView.target;
+    const clamped = new THREE.Vector3(
+      THREE.MathUtils.clamp(controls.target.x, base.x - PAN_LIMITS.x, base.x + PAN_LIMITS.x),
+      THREE.MathUtils.clamp(controls.target.y, base.y - PAN_LIMITS.y, base.y + PAN_LIMITS.y),
+      THREE.MathUtils.clamp(controls.target.z, base.z - PAN_LIMITS.z, base.z + PAN_LIMITS.z),
+    );
+    const correction = clamped.sub(controls.target);
+    if (correction.lengthSq() < 1e-8) return;
+    controls.target.add(correction);
+    camera.position.add(correction);
+  }
+
+  function handleTap(event) {
+    if (!pointerStart) return;
     const movement = Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y);
     pointerStart = null;
     if (movement > 8) return;
@@ -273,34 +286,15 @@ export function createSceneController({
     camera.position.copy(controls.target).add(direction.multiplyScalar(nextDistance));
     controls.update();
     onUserNavigate?.();
-    invalidate(profile.mobile ? 1 : 15);
-  }
-
-  function setMoveMode(enabled) {
-    const next = !profile.mobile && Boolean(enabled);
-    moveMode = next;
-    controls.enableRotate = !moveMode;
-    canvas.classList.toggle('fridge-move-mode', moveMode);
-    if (!moveMode) movePointer = null;
-    onMoveModeChange?.(moveMode);
-    invalidate(1);
-    return moveMode;
-  }
-
-  function toggleMoveMode() {
-    return setMoveMode(!moveMode);
+    invalidate(profile.mobile ? 1 : 10);
   }
 
   function resetView() {
     if (!initialView) return;
-    setMoveMode(false);
-    userOffsetX = 0;
-    userOffsetZ = 0;
     camera.position.copy(initialView.position);
     controls.target.copy(initialView.target);
     controls.update();
-    shadowDirty = true;
-    invalidate(profile.mobile ? 1 : 18);
+    invalidate(profile.mobile ? 1 : 12);
   }
 
   function groundedY(scale) {
@@ -333,7 +327,7 @@ export function createSceneController({
       }
       initialView = { position: camera.position.clone(), target: controls.target.clone() };
       fridge.group.scale.setScalar(baseScale);
-      fridge.group.position.set(baseX + userOffsetX, groundedY(baseScale), userOffsetZ);
+      fridge.group.position.set(baseX, groundedY(baseScale), 0);
       controls.update();
     }
 
@@ -355,15 +349,14 @@ export function createSceneController({
     const lowerTarget = doorState.lower ? 1.82 : 0;
     const anyOpen = doorState.upper || doorState.lower;
     const desiredScale = baseScale * (anyOpen ? 0.94 : 1);
-    const desiredX = baseX + userOffsetX + (anyOpen ? -0.72 : 0);
-    const desiredZ = userOffsetZ;
+    const desiredX = baseX + (anyOpen ? -0.72 : 0);
     const desiredY = groundedY(desiredScale);
 
     fridge.doors.upper.pivot.rotation.y = damp(fridge.doors.upper.pivot.rotation.y, upperTarget, 8.5, delta);
     fridge.doors.lower.pivot.rotation.y = damp(fridge.doors.lower.pivot.rotation.y, lowerTarget, 8.5, delta);
     fridge.group.position.x = damp(fridge.group.position.x, desiredX, 7.5, delta);
     fridge.group.position.y = damp(fridge.group.position.y, desiredY, 7.5, delta);
-    fridge.group.position.z = damp(fridge.group.position.z, desiredZ, 8.5, delta);
+    fridge.group.position.z = damp(fridge.group.position.z, 0, 8.5, delta);
     const nextScale = damp(fridge.group.scale.x, desiredScale, 6.5, delta);
     fridge.group.scale.setScalar(nextScale);
 
@@ -371,10 +364,8 @@ export function createSceneController({
       || !near(fridge.doors.lower.pivot.rotation.y, lowerTarget)
       || !near(fridge.group.position.x, desiredX)
       || !near(fridge.group.position.y, desiredY)
-      || !near(fridge.group.position.z, desiredZ)
+      || !near(fridge.group.position.z, 0)
       || !near(fridge.group.scale.x, desiredScale);
-    if (!cabinetMoving && cabinetWasMoving) shadowDirty = true;
-    cabinetWasMoving = cabinetMoving;
 
     for (let index = animations.length - 1; index >= 0; index -= 1) {
       const animation = animations[index];
@@ -400,15 +391,16 @@ export function createSceneController({
     }
 
     const controlsChanged = controls.update();
-    if (shadowDirty) {
+    const finalShadowFrame = !cabinetMoving && cabinetWasMoving;
+    if (cabinetMoving || finalShadowFrame || shadowDirty) {
       renderer.shadowMap.needsUpdate = true;
       shadowDirty = false;
     }
+    cabinetWasMoving = cabinetMoving;
     renderer.render(scene, camera);
 
     if (settleFrames > 0) settleFrames -= 1;
     const needsAnotherFrame = controlsActive
-      || Boolean(movePointer)
       || cabinetMoving
       || animations.length > 0
       || Boolean(attention)
@@ -428,9 +420,6 @@ export function createSceneController({
     zoomIn: () => zoomBy(-1.7),
     zoomOut: () => zoomBy(1.7),
     resetView,
-    setMoveMode,
-    toggleMoveMode,
-    getMoveMode: () => moveMode,
     getDoorState: () => ({ ...doorState }),
   };
 }
@@ -471,8 +460,13 @@ function findFoodRoot(object) {
 function disposeObject(object) {
   object.traverse((child) => {
     child.geometry?.dispose?.();
-    if (Array.isArray(child.material)) child.material.forEach((material) => material.dispose?.());
-    else child.material?.dispose?.();
+    if (Array.isArray(child.material)) {
+      child.material.forEach((material) => {
+        if (!material.userData?.sharedFoodDetail) material.dispose?.();
+      });
+    } else if (!child.material?.userData?.sharedFoodDetail) {
+      child.material?.dispose?.();
+    }
   });
 }
 
