@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { roundedBox } from './geometry.js';
 import { toon } from './materials.js';
 import { SLOT_LAYOUT } from './fridgeLayout.js';
+import { prepareFoodPlacement } from './foodPlacement.js';
 
 export function createFoodModel(food, inventoryItem) {
   const group = new THREE.Group();
@@ -127,8 +128,6 @@ export function createFoodModel(food, inventoryItem) {
       rimTop.rotation.x = Math.PI / 2;
       rimTop.position.y = 0.36;
       add(rimTop);
-      // Create the bottom rim independently. Cloning rimTop after add() would
-      // copy its circular foodRoot reference and fail inside Three.js.
       const rimBottom = new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.025, 5, 10), b);
       rimBottom.rotation.x = Math.PI / 2;
       rimBottom.position.y = -0.36;
@@ -285,8 +284,5 @@ export function createFoodModel(food, inventoryItem) {
       add(roundedBox(0.6, 0.6, 0.6, 0.08, a));
   }
 
-  group.position.set(slot.x, slot.y, slot.z);
-  group.rotation.y = slot.rotationY ?? 0;
-  group.scale.setScalar(0.001);
-  return group;
+  return prepareFoodPlacement(group, slot);
 }
