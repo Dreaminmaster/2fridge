@@ -16,14 +16,19 @@
 .inventory-summary,
 .remove-one,
 .danger-button,
-.secondary-button {
+.secondary-button,
+.drawer-done-button,
+.undo-add-button,
+.category-tab {
   -webkit-tap-highlight-color: transparent;
 }
 
 .icon-button:active,
 .control-button:active,
 .food-toggle:active,
-.remove-one:active {
+.remove-one:active,
+.drawer-done-button:active,
+.undo-add-button:active {
   transform: scale(0.94);
 }
 
@@ -76,6 +81,19 @@
 
   .drawer {
     transition-duration: 0.25s;
+  }
+
+  .drawer--food {
+    max-height: min(74dvh, 680px);
+  }
+
+  .drawer-done-button {
+    min-width: 62px;
+    height: 40px;
+  }
+
+  .food-drawer-status {
+    min-height: 42px;
   }
 
   .food-card {
