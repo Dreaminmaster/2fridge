@@ -7,16 +7,27 @@ test('slot counts match declared capacities', () => {
   Object.values(ZONE_META).forEach((zone) => assert.equal(SLOT_LAYOUT[zone.id].length, zone.capacity));
 });
 
-test('each cold shelf contains a back and front row', () => {
-  for (const zone of ['fridge', 'freezer']) {
-    const shelves = new Map();
-    SLOT_LAYOUT[zone].forEach((slot) => {
-      const depths = shelves.get(slot.shelf) ?? new Set();
-      depths.add(slot.depth);
-      shelves.set(slot.shelf, depths);
-    });
-    shelves.forEach((depths) => assert.deepEqual(depths, new Set(['back', 'front'])));
-  }
+test('refrigerator exposes four usable shelves with front and back rows', () => {
+  const shelves = new Map();
+  SLOT_LAYOUT.fridge.forEach((slot) => {
+    const depths = shelves.get(slot.shelf) ?? new Set();
+    depths.add(slot.depth);
+    shelves.set(slot.shelf, depths);
+  });
+  assert.equal(shelves.size, 4);
+  shelves.forEach((depths) => assert.deepEqual(depths, new Set(['back', 'front'])));
+  assert.equal(SLOT_LAYOUT.fridge.filter((slot) => slot.shelf === 3).length, 8);
+  assert.ok(SLOT_LAYOUT.fridge.filter((slot) => slot.shelf === 3).every((slot) => slot.supportY < 0));
+});
+
+test('each freezer shelf contains a back and front row', () => {
+  const shelves = new Map();
+  SLOT_LAYOUT.freezer.forEach((slot) => {
+    const depths = shelves.get(slot.shelf) ?? new Set();
+    depths.add(slot.depth);
+    shelves.set(slot.shelf, depths);
+  });
+  shelves.forEach((depths) => assert.deepEqual(depths, new Set(['back', 'front'])));
 });
 
 test('all slots stay within the cabinet and define physical envelopes', () => {

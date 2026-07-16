@@ -4,6 +4,8 @@ export const SLOT_LAYOUT = {
       { supportY: 3.02, maxHeight: 1.12 },
       { supportY: 1.82, maxHeight: 0.88 },
       { supportY: 0.64, maxHeight: 0.88 },
+      // The lined bottom of the refrigerator compartment is the fourth shelf.
+      { supportY: -0.74, maxHeight: 1.12 },
     ],
     cols: [-1.44, -0.48, 0.48, 1.44],
     maxWidth: 0.76,
@@ -15,11 +17,7 @@ export const SLOT_LAYOUT = {
   }),
   freezer: buildLayeredShelves({
     supports: [
-      // Upper freezer shelf.
       { supportY: -2.26, maxHeight: 0.86 },
-      // Lower freezer floor liner. Its vertical clearance is intentionally
-      // smaller so tall models are automatically scaled down instead of
-      // cutting through the shelf above.
       { supportY: -3.02, maxHeight: 0.58 },
     ],
     cols: [-1.44, -0.48, 0.48, 1.44],

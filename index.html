@@ -24,13 +24,12 @@
         </header>
 
         <div class="camera-controls" aria-label="视角控制">
-          <button id="moveFridgeButton" class="control-button control-button--move" type="button" aria-pressed="false" aria-label="切换移动冰箱模式" title="移动冰箱">✥</button>
           <button id="zoomInButton" class="control-button" type="button" aria-label="放大冰箱">+</button>
           <button id="zoomOutButton" class="control-button" type="button" aria-label="缩小冰箱">−</button>
           <button id="resetViewButton" class="control-button control-button--reset" type="button" aria-label="恢复默认视角">⌂</button>
         </div>
 
-        <p id="gestureHint" class="gesture-hint">拖动旋转 · 双指缩放 · 每层分前后两排</p>
+        <p id="gestureHint" class="gesture-hint">拖动旋转 · 双指缩放 · 电脑触控板双指平移</p>
 
         <button id="foodToggle" class="food-toggle" type="button" aria-controls="foodDrawer" aria-expanded="false">
           <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 11h18l-2 14H9L7 11Zm4-5 5 5 5-5"/></svg>
@@ -40,7 +39,7 @@
         <section id="inventoryDock" class="inventory-dock" aria-label="冰箱容量">
           <button id="inventoryToggle" class="inventory-summary" type="button" aria-controls="inventoryDrawer" aria-expanded="false">
             <span class="inventory-summary__title">冰箱内容</span>
-            <span id="inventoryCount" class="inventory-summary__count">0 / 52</span>
+            <span id="inventoryCount" class="inventory-summary__count">0 / 60</span>
             <span class="inventory-summary__chevron">⌃</span>
           </button>
           <div id="zoneMeters" class="zone-meters"></div>
@@ -51,7 +50,7 @@
           <div class="drawer-header">
             <div>
               <h2>添加食材</h2>
-              <p>连续选择食材，系统会自动分配前后排空位</p>
+              <p>连续选择食材，系统会自动分配四层前后排空位</p>
             </div>
             <button id="foodDrawerClose" class="drawer-done-button" type="button" aria-label="完成添加食材">完成</button>
           </div>
@@ -99,10 +98,10 @@
           <button class="icon-button icon-button--plain modal-sheet__close" data-close-modal type="button" aria-label="关闭">×</button>
           <h2>如何使用</h2>
           <div class="help-grid">
-            <article><b>拖动</b><span>旋转查看冰箱深处、侧面和柜门内侧</span></article>
-            <article><b>电脑移动</b><span>点击 ✥ 切换移动模式，再拖动冰箱调整画面位置</span></article>
-            <article><b>双指或滚轮</b><span>平滑放大和缩小冰箱</span></article>
-            <article><b>前后两排</b><span>同一层优先放前排，放满后再使用后排</span></article>
+            <article><b>拖动旋转</b><span>鼠标左键或单指拖动，查看冰箱深处和柜门内侧</span></article>
+            <article><b>电脑平移</b><span>Mac 触控板双指滑动，或按住鼠标右键拖动，移动整个视角</span></article>
+            <article><b>缩放</b><span>触控板捏合、鼠标滚轮或电脑端视角按钮缩放</span></article>
+            <article><b>冷藏四层</b><span>三块层板加底部内衬，每层都有前排和后排</span></article>
             <article><b>连续添加</b><span>食材面板会保持打开，完成后再主动关闭</span></article>
             <article><b>轻点食物</b><span>查看所在层与前后排，并可单独移除</span></article>
           </div>
