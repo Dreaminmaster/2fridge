@@ -32,11 +32,13 @@ test('the first chilled inventory entry resolves to a visible front slot', () =>
   assert.ok(SLOT_LAYOUT.fridge[result.item.slot].z > 0);
 });
 
-test('back row remains raised and visible after the front row fills', () => {
+test('back row shares the shelf support plane without floating', () => {
   const front = SLOT_LAYOUT.fridge[0];
   const back = SLOT_LAYOUT.fridge[4];
   assert.equal(front.shelf, back.shelf);
+  assert.equal(front.supportY, back.supportY);
+  assert.equal(front.y, back.y);
   assert.ok(back.z < front.z);
-  assert.ok(back.y > front.y);
+  assert.notEqual(back.x, front.x);
   assert.ok(back.scale > 0.6);
 });
