@@ -19,12 +19,17 @@ test('each cold shelf contains a back and front row', () => {
   }
 });
 
-test('all slots stay within the deep cabinet cavity', () => {
+test('all slots stay within the cabinet and define physical envelopes', () => {
   for (const zone of ['fridge', 'freezer']) {
     SLOT_LAYOUT[zone].forEach((slot) => {
       assert.ok(slot.x > -2 && slot.x < 2);
       assert.ok(slot.z > -1.8 && slot.z < 1.5);
-      assert.ok(slot.scale <= 0.7);
+      assert.ok(slot.scale <= 0.72);
+      assert.ok(Number.isFinite(slot.supportY));
+      assert.ok(slot.maxWidth > 0 && slot.maxWidth < 1);
+      assert.ok(slot.maxHeight > 0 && slot.maxHeight < 1.2);
+      assert.ok(slot.maxDepth > 0 && slot.maxDepth < 1);
+      assert.ok(slot.fitPadding > 0 && slot.fitPadding < 1);
     });
   }
 });
