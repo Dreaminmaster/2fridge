@@ -14,6 +14,8 @@ assert.ok(SLOT_LAYOUT.freezer.some((slot) => slot.depth === 'front'));
 assert.ok(SLOT_LAYOUT.freezer.some((slot) => slot.depth === 'back'));
 assert.ok(SLOT_LAYOUT.fridge.slice(0, 4).every((slot) => slot.depth === 'front'), '冷藏必须前排优先');
 assert.ok(SLOT_LAYOUT.freezer.slice(0, 4).every((slot) => slot.depth === 'front'), '冷冻必须前排优先');
+assert.ok(Object.values(SLOT_LAYOUT).flat().every((slot) => Number.isFinite(slot.supportY)), '每个槽位必须定义承托面');
+assert.ok(Object.values(SLOT_LAYOUT).flat().every((slot) => slot.maxWidth && slot.maxHeight && slot.maxDepth), '每个槽位必须定义安全包围盒');
 
 const files = await Promise.all([
   'src/domain/inventoryStore.js',
@@ -21,6 +23,7 @@ const files = await Promise.all([
   'src/scene/sceneController.js',
   'src/scene/createFridge.js',
   'src/scene/createFoodModel.js',
+  'src/scene/foodPlacement.js',
   'src/ui/uiController.js',
   'src/style.css',
   'src/mobile-performance.css',
@@ -38,15 +41,19 @@ assert.ok(!files[2].includes('setAnimationLoop'));
 assert.ok(files[2].includes('pixelRatioCap: coarsePointer || narrowViewport ? 1.8 : 2'));
 assert.ok(files[2].includes('shadowMap.autoUpdate = false'));
 assert.ok(files[2].includes('stageItem'));
-assert.ok(files[3].includes('genuinely deep cabinet'));
+assert.ok(files[3].includes('freezerFloor'));
+assert.ok(files[3].includes('frontGuard'));
+assert.ok(files[4].includes('prepareFoodPlacement'));
 assert.ok(files[4].includes('depthLabel'));
 assert.ok(!files[4].includes('THREE.CapsuleGeometry'));
-assert.ok(files[5].includes('store.prepareAdd'));
-assert.ok(files[5].includes('store.commitPrepared'));
-assert.ok(files[5].includes('scene.stageItem'));
-assert.ok(!files[6].includes('statusText'));
-assert.ok(files[7].includes('.camera-controls'));
-assert.ok(files[7].includes('display: none'));
-assert.ok(files[8].includes("import './mobile-performance.css'"));
-assert.ok(files[9].includes('https://dreaminmaster.github.io/2fridge/'));
-console.log(`Project validation passed: ${FOOD_CATALOG.length} foods, transactional inventory, full-quality on-demand mobile rendering.`);
+assert.ok(files[5].includes('new THREE.Box3().setFromObject'));
+assert.ok(files[5].includes('supportY'));
+assert.ok(files[6].includes('store.prepareAdd'));
+assert.ok(files[6].includes('store.commitPrepared'));
+assert.ok(files[6].includes('scene.stageItem'));
+assert.ok(!files[7].includes('statusText'));
+assert.ok(files[8].includes('.camera-controls'));
+assert.ok(files[8].includes('display: none'));
+assert.ok(files[9].includes("import './mobile-performance.css'"));
+assert.ok(files[10].includes('https://dreaminmaster.github.io/2fridge/'));
+console.log(`Project validation passed: ${FOOD_CATALOG.length} foods, physical grounding, collision envelopes, transactional inventory, full-quality on-demand mobile rendering.`);
